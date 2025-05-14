@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>故事卡競拍遊戲記錄</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <h1>故事卡競拍遊戲記錄</h1>
+
+    <div class="setup">
+        <h2>遊戲設定</h2>
+        <div class="player-options">
+            <h3>1. 選擇人數</h3>
+            <button id="player1" onclick="selectPlayerCountUI(1)" disabled>1人</button>
+            <button id="player2" onclick="selectPlayerCountUI(2)" disabled>2人</button>
+            <button id="player3" onclick="selectPlayerCountUI(3)" disabled>3人</button>
+        </div>
+        
+        <div id="characterSelectionUI" style="display:none;">
+            <h3>2. 選擇角色 (不同玩家請選擇不同角色)</h3>
+            <div id="characterSelectorsContainer">
+                </div>
+            <button id="confirmCharactersButton" onclick="confirmCharacterSelections()">確認角色</button>
+            <p id="characterSelectionError" class="error-message"></p>
+        </div>
+        
+        <button id="startButton" onclick="startGame()" disabled>開始遊戲</button>
+    </div>
+
+    <div class="game-area" style="display:none;">
+        <h2 id="roundTitle">第1回合</h2>
+        <div id="marketSelection">
+            <h3>選擇本回合的3張市場卡片</h3>
+            <div id="marketArea">
+                </div>
+            <button id="confirmMarket" onclick="confirmMarket()" disabled>確定市場卡片</button>
+            <button id="resetMarketSelectionBtn" onclick="resetMarketCardSelection()">重設選擇</button>
+        </div>
+
+        <div id="playerActions" style="display:none;">
+             <h3>玩家行動選擇</h3>
+            <div class="players">
+                <div class="player" id="playerA" style="display:none;">
+                    <h3 id="playerTitleA">A玩家</h3>
+                    <div class="actions" id="actionsA">
+                        </div>
+                    <div class="manual-time-controls" id="manualControlsA">
+                        </div>
+                    <div class="time-bar">
+                        <div class="time-bar-inner" id="barA"></div>
+                    </div>
+                </div>
+                <div class="player" id="playerB" style="display:none;">
+                    <h3 id="playerTitleB">B玩家</h3>
+                    <div class="actions" id="actionsB"></div>
+                    <div class="manual-time-controls" id="manualControlsB"></div>
+                    <div class="time-bar">
+                        <div class="time-bar-inner" id="barB"></div>
+                    </div>
+                </div>
+                <div class="player" id="playerC" style="display:none;">
+                    <h3 id="playerTitleC">C玩家</h3>
+                    <div class="actions" id="actionsC"></div>
+                    <div class="manual-time-controls" id="manualControlsC"></div>
+                    <div class="time-bar">
+                        <div class="time-bar-inner" id="barC"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="round-controls">
+                <button id="backToMarketSelectionBtn" onclick="backToMarketSelection()" style="display:none;">返回選擇市場卡片</button>
+                <button id="nextRoundBtn" onclick="nextRound()" disabled>下一回合</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline" id="timeline" style="display:none;">
+        <h2>時間軸紀錄</h2>
+        <div class="timeline-player" id="timelineA" style="display:none;">
+            <h3 id="timelinePlayerTitleA">A玩家 時間軸</h3>
+            <div class="timeline-events" id="eventsA"></div>
+        </div>
+        <div class="timeline-player" id="timelineB" style="display:none;">
+            <h3 id="timelinePlayerTitleB">B玩家 時間軸</h3>
+            <div class="timeline-events" id="eventsB"></div>
+        </div>
+        <div class="timeline-player" id="timelineC" style="display:none;">
+            <h3 id="timelinePlayerTitleC">C玩家 時間軸</h3>
+            <div class="timeline-events" id="eventsC"></div>
+        </div>
+        <h2>
+            <button id="downloadConsoleLog" onclick="downloadConsoleLog()">匯出遊戲紀錄</button>
+        </h2>
+    </div>
+    <script src="./script.js" defer></script>
+</body>
+</html>

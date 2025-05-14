@@ -1,0 +1,331 @@
+/* === 基本頁面與容器樣式 === */
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    margin: 0;
+}
+
+h1, h2, h3 { /* 統一標題樣式 */
+    text-align: center;
+    color: #333;
+    margin: 10;
+}
+h3 {
+    font-size: 1.1em;
+}
+
+.setup, .game-area, .timeline {
+    margin: 20px auto;
+    max-width: 800px; 
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.setup h3 { font-size: 1em; margin-bottom: 5px;}
+
+/* === 錯誤訊息樣式 === */
+.error-message {
+    color: red;
+    font-size: 0.9em;
+    min-height: 1.2em; 
+    margin-top: 10px;
+    text-align: center; /* 讓錯誤訊息也居中 */
+}
+
+/* === 通用按鈕樣式 === */
+button {
+    margin: 5px;
+    padding: 10px 15px;
+    border: 1px solid transparent; 
+    background: #4CAF50; /* 預設綠色 */
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+button:hover:not(:disabled) {
+    opacity: 0.85;
+}
+button:disabled {
+    background-color: #dcdcdc !important;
+    color: #999 !important;
+    cursor: not-allowed !important;
+    border-color: #ccc !important;
+}
+button.selected {
+    background-color: #007bff; /* 選中時藍色 */
+    border-color: #0056b3;
+}
+
+/* 設定階段特定按鈕 */
+.player-options button, 
+#confirmCharactersButton { /* 確認角色按鈕也用此風格 */
+    background-color: #5cb85c; 
+    border-color: #4cae4c;
+}
+.player-options button.selected, 
+#confirmCharactersButton.selected { 
+    background-color: #007bff;
+    border-color: #0056b3;
+}
+
+#startButton {
+    background-color: #f0f0f0; /* 初始灰色 */
+    color: #888;
+    border: 1px solid #ccc;
+    display: block; 
+    margin: 15px auto 0 auto;
+}
+#startButton:not(:disabled) {
+    background-color: #28a745; /* 啟用時的綠色 */
+    color: white;
+    border-color: #28a745;
+}
+
+/* 角色選擇 */
+#characterSelectionUI {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+.character-selector-wrapper {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center; /* 讓角色選擇器整體居中 */
+}
+.character-selector-wrapper label {
+    margin-right: 8px;
+    min-width: 120px; 
+    text-align: right; /* 標籤文字靠右對齊 */
+}
+.character-selector-wrapper select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    min-width: 200px;
+}
+
+/* === 遊戲區域 === */
+#marketSelection, #playerActions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px dashed #eee;
+}
+#marketArea {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #fdfdfd;
+    border-radius: 5px;
+    min-height: 50px; 
+}
+#marketArea button { 
+    min-width: 120px; 
+    margin: 8px;
+}
+
+#marketInfo {
+    font-size: 0.9em;
+    color: #666;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.players {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+    gap: 15px; 
+}
+.player {
+    flex: 1;
+    padding: 15px;
+    background: #f0f8ff; 
+    border: 1px solid #d1e7fd;
+    border-radius: 8px;
+    text-align: center;
+    display: flex; /* 讓內部元素垂直排列 */
+    flex-direction: column; /* 垂直排列 */
+}
+.player h3 { margin-top: 0;}
+
+.actions { 
+    margin-top: 10px;
+    display: flex; 
+    flex-wrap: wrap; 
+    justify-content: center;
+    min-height: 40px; 
+    flex-grow: 1; /* 讓行動按鈕區域填滿剩餘空間，將 +/- 按鈕推到底部 */
+}
+.actions button {
+    min-width: 100px; 
+}
+
+.round-controls { 
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* === 手動時間調整按鈕 === */
+.manual-time-controls {
+    margin-top: auto; /* 將此容器推到 .player div 的底部 */
+    padding-top: 10px; /* 與上方元素留出間距 */
+    display: flex;
+    justify-content: center;
+    gap: 10px; 
+}
+.manual-time-controls button {
+    padding: 5px 10px; 
+    font-size: 0.9em;
+    min-width: 80px; 
+    background-color: #6c757d; 
+    border-color: #5a6268;
+}
+.manual-time-controls button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+/* === 時間條 (Resource Bar) === */
+.time-bar {
+    height: 25px;
+    background: #e0e0e0;
+    border-radius: 5px;
+    margin-top: 10px; /* 與 +/- 按鈕的間隔 */
+    position: relative;
+}
+.time-bar-inner {
+    height: 100%;
+    text-align: center;
+    color: white;
+    line-height: 25px;
+    font-weight: bold;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+/* === 時間軸 (Timeline) === */
+.timeline { 
+    margin-top: 10px;
+}
+.timeline-player { 
+    margin-bottom: 10px;
+    overflow-x: auto; 
+    padding-bottom: 10px; 
+}
+.timeline-player h3 { 
+    margin-bottom: 8px;
+    font-size: 1em;
+    color: #555;
+    text-align: left; 
+}
+.timeline-events { 
+    display: flex;
+    align-items: center;
+    min-height: 120px; 
+    background: #f9f9f9; 
+    border-radius: 4px;
+    padding: 20px 5px; 
+    padding-left: 40px;
+    width: fit-content; 
+}
+
+.event {
+    min-width: 30px; 
+    margin: 0 1px; 
+    border-radius: 3px;
+    position: relative; 
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px; 
+    font-weight: bold;
+    color: white; 
+}
+
+.event:hover {
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+/* 時間軸事件類型顏色 */
+.event.rest { background-color: #4CAF50; }
+.event.buy { background-color: #2196F3; }
+.event.buy_fail { background-color: #ff7043; /* 購買失敗 - 橙紅色 */ }
+.event.bidding.win { background-color: #FFC107; color: #333; }
+.event.bidding.lose { background-color: #BDBDBD; }
+.event.bidding.pass, .event.bidding.pass_all { background-color: #E0E0E0; color: #555; }
+.event.bidding.fail, .event.bidding.tie_fail { background-color: #F44336; }
+.event.phase_tick { background-color: #90A4AE; /* 階段戳記 - 藍灰色 */ }
+.event.manual_adjust { color: #007bff !important; /* 符號文字強制藍色 */}
+.event.manual_adjust.plus { background-color: #e0f7fa; /* 手動加時 - 淡藍青色 */ }
+.event.manual_adjust.minus { background-color: #ffebee; /* 手動減時 - 淡粉紅色 */ }
+
+/* Tooltip */
+.tooltip {
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    text-align: left;
+    border-radius: 5px;
+    padding: 8px 10px;
+    position: absolute;
+    z-index: 30;
+    white-space: nowrap; /* 禁止換行 */
+    width: max-content; /* 自動延展，符合內容長度 */
+    max-width: none; /* 不設最大寬度限制 */
+    box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0s 0.2s;
+}
+.tooltip-top {
+    bottom: calc(100% + 5px);
+    right: auto;
+    left: 0;
+}
+.tooltip-bottom {
+    top: calc(100% + 5px);
+    right: auto;
+    left: 0;
+}
+.event:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0s;
+}
+.event.enlarged {
+    transform: scale(1.5); 
+    z-index: 15; 
+}
+.event.enlarged .tooltip { 
+    visibility: visible;
+    opacity: 1;
+}
+
+/* === 競標視窗 === */
+.bidding-window {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    z-index: 100;
+    min-width: 300px;
+    max-width: 90%;
+}
+.bidding-window h3 { margin-top: 0; text-align: center; }
+.bidding-window p { text-align: center; margin-bottom: 15px; }
+.bidding-window button {
+    display: block;
+    width: calc(100% - 10px); 
+    margin-left: 5px;
+    margin-right: 5px;
+    margin-bottom: 8px;
+}
