@@ -31,7 +31,7 @@
     <div class="game-area" style="display:none;">
         <h2 id="roundTitle">第1回合</h2>
         <div id="marketSelection">
-            <h3>選擇本回合的3張市場卡片</h3>
+            <h3 id="marketSelectionTitle">選擇本回合的市場卡片</h3>
             <div id="marketArea">
                 </div>
             <button id="confirmMarket" onclick="confirmMarket()" disabled>確定市場卡片</button>
@@ -89,9 +89,9 @@
             <h3 id="timelinePlayerTitleC">C玩家 時間軸</h3>
             <div class="timeline-events" id="eventsC"></div>
         </div>
-        <h2>
+        <div class="timeline-controls" style="text-align: center; margin-top: 20px;">
             <button id="downloadConsoleLog" onclick="downloadConsoleLog()">匯出遊戲紀錄</button>
-        </h2>
+        </div>
     </div>
     <script src="./script.js" defer></script>
 </body>

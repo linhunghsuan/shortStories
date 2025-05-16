@@ -18,6 +18,8 @@ let zIndexCounter = 100;
 let round = 1;
 let selectedPlayerCount = 0;
 let playerCharacterSelections = {};
+let playerCharacterSkills = {};
+let playerTurnChoices = {};
 
 // ========= 常數與資料設定 =========
 let cardData = null;
@@ -30,6 +32,7 @@ const REST_RECOVERY_AMOUNT = 6;
 const TIME_UNIT_WIDTH = 30;
 const MIN_EVENT_SEGMENT_WIDTH = TIME_UNIT_WIDTH; // 讓0時間變化的事件也佔據1個單位寬
 const EVENT_SEGMENT_HEIGHT = '25px';
+const actionButtonsMap = {}; // player -> array of buttons
 
 let availableCards = [];
 
@@ -98,7 +101,6 @@ function selectPlayerCountUI(count) {
         clickedButton.classList.add('selected');
         displayCharacterSelection(count);
         document.getElementById('confirmCharactersButton').disabled = false;
-        document.getElementById('confirmCharactersButton').style.backgroundColor = ''; // 恢復預設綠色
         document.getElementById('startButton').disabled = true;
         document.getElementById('characterSelectionError').textContent = '';
         document.getElementById('confirmCharactersButton').classList.remove('selected');
@@ -202,10 +204,18 @@ function startGame() {
 
         const selectedCharNameKey = playerCharacterSelections[p_id];
         const character = characterSettings[selectedCharNameKey];
+        const selectedCharKey = playerCharacterSelections[p_id];
+        const characterInfo = characterSettings[selectedCharKey];
+        playerCharacterSkills[p_id] = characterInfo.skill ? {
+            ...characterInfo.skill
+        } : {
+            type: "NONE"
+        };
         playerTimes[p_id] = character.startTime;
 
+
         document.querySelector(`#player${p_id} > h3`).textContent = `${p_id}玩家 (${character.name})`;
-        document.querySelector(`#timeline${p_id} > h3`).textContent = `${p_id}玩家 (${character.name}) (${character.specialAbility}) 時間軸`;
+        document.querySelector(`#timeline${p_id} > h3`).textContent = `${p_id}玩家 (${character.name}) (${character.startTime}) 時間軸`;
 
         timeline[p_id] = [];
         updateTimeBar(p_id);
@@ -224,6 +234,9 @@ function startGame() {
 
 // ========= 市場階段函式 =========
 function drawMarket() {
+    const maxSelection = determineMaxMarketSelectionCount(); // 獲取正確的市場卡片數量
+    document.getElementById('marketSelectionTitle').textContent = `選擇本回合的 ${maxSelection} 張市場卡片`;
+    document.getElementById('marketSelectionTitle').textContent = `點擊下方卡片進行選擇 (請選出 ${maxSelection} 張作為本回合市場卡片)`;
     const marketArea = document.getElementById('marketArea');
     marketArea.innerHTML = '';
     selectedMarket = []; // 清空上一輪在市場上點選的卡片
@@ -255,7 +268,7 @@ function toggleMarketCard(cardId, btn) {
     if (isSelected) {
         selectedMarket = selectedMarket.filter(c => c !== cardId);
     } else {
-        const maxSelection = Math.min(3, availableCards.length);
+        const maxSelection = determineMaxMarketSelectionCount();
         if (selectedMarket.length >= maxSelection) {
             alert(`最多只能選擇 ${maxSelection} 張市場卡片。`);
             return;
@@ -275,7 +288,7 @@ function updateMarketButtonState(cardId, btn) {
 }
 
 function updateConfirmMarketButtonState() {
-    const maxSelection = Math.min(3, availableCards.length);
+    const maxSelection = determineMaxMarketSelectionCount();
     if (availableCards.length === 0) {
         document.getElementById('confirmMarket').disabled = true;
     } else {
@@ -284,7 +297,7 @@ function updateConfirmMarketButtonState() {
 }
 
 function confirmMarket() {
-    const maxSelection = Math.min(3, availableCards.length);
+    const maxSelection = determineMaxMarketSelectionCount();
     if (selectedMarket.length !== maxSelection) {
         alert(`請選擇 ${maxSelection} 張市場卡片！`);
         return;
@@ -300,7 +313,13 @@ function confirmMarket() {
 }
 
 function marketStep() {
+    playerTurnChoices = {}; // 重設選擇狀態
     players.forEach(p => {
+        playerTurnChoices[p] = {
+            count: 0,
+            firstCardId: null,
+            actions: []
+        };
         updateActionButtonsForPlayer(p); // ⬅️ 核心邏輯統一處理於此
 
         // 生成手動時間調整按鈕
@@ -322,9 +341,9 @@ function marketStep() {
 
     checkAllActions();
 }
-
 function createActionButton(player, choice, displayIndex) {
     const btn = document.createElement('button');
+
     if (choice === '休息') {
         btn.textContent = '休息';
     } else {
@@ -337,9 +356,18 @@ function createActionButton(player, choice, displayIndex) {
             btn.textContent = `待標商品${displayIndex} (${cardInfo.name} - 需時: ${cardInfo.price})`;
         }
     }
+
     btn.onclick = () => selectAction(player, choice, btn);
     document.getElementById('actions' + player).appendChild(btn);
+
+    // ⭐ 紀錄按鈕到該玩家的按鈕陣列
+    if (!actionButtonsMap[player]) {
+        actionButtonsMap[player] = [];
+    }
+    actionButtonsMap[player].push(btn);
 }
+
+
 
 // 「重設市場卡片選擇」按鈕的邏輯 (在市場選擇階段使用)
 function resetMarketCardSelection() {
@@ -369,29 +397,139 @@ function backToMarketSelection() {
     drawMarket(); // 重新繪製市場，列出所有 availableCards
 }
 
+//調整市場卡片數量 (技能ID "8")
+function determineMaxMarketSelectionCount() {
+    let marketSize = selectedPlayerCount + 1; // 基本數量：玩家人數 + 1
+    let skill8Active = players.some(p_id =>
+        playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "EXTRA_MARKET_CARD"
+    );
+    if (skill8Active) {
+        marketSize++;
+    }
+    return Math.min(marketSize, availableCards.length); // 不能超過剩餘卡牌總數
+
+}
+
 // ========= 玩家行動函式 =========
 function selectAction(player, choice, clickedButton) {
+    const skillInfo = playerCharacterSkills[player];
+    const isTwoCardChooser = skillInfo && skillInfo.type === "TWO_CARD_CHOICES";
+
+    if (isTwoCardChooser) {
+        handleTwoCardPlayerAction(player, choice, clickedButton);
+    } else {
+        handleSingleChoicePlayerAction(player, choice, clickedButton);
+    }
+
+    checkAllActions(); // 驗證是否所有人都完成選擇
+}
+
+function markPlayerSelectedActions(player, finalActionsArray) {
+    const actionButtonsContainer = document.getElementById('actions' + player);
+    console.log(`玩家 ${player} 最終選擇: ${finalActionsArray.join(', ')}`);
+    const buttons = Array.from(actionButtonsContainer.getElementsByTagName('button'));
+    buttons.forEach(btn => {
+        if (finalActionsArray.includes(btn.dataset.choice)) {
+            btn.classList.add('selected');
+        }
+    });
+}
+
+function disableAllActionButtonsForPlayer(player) {
     const actionButtonsContainer = document.getElementById('actions' + player);
     const buttons = Array.from(actionButtonsContainer.children);
+    buttons.forEach(btn => btn.disabled = true);
+}
+function updateButtonsForSecondChoice(player, firstCardId) {
+    const actionButtonsContainer = document.getElementById('actions' + player);
+    actionButtonsContainer.innerHTML = ''; // 清空所有舊按鈕
+
+    const firstChoiceText = document.createElement('p');
+    firstChoiceText.textContent = `已選: ${cardData[firstCardId].name}`;
+    actionButtonsContainer.appendChild(firstChoiceText);
+
+    const playerButtons = [];
+
+    // 建立剩餘卡片選擇
+    marketCards.forEach((cardId, index) => {
+        if (cardId === firstCardId) return;
+        const cardInfo = cardData[cardId];
+        if (!cardInfo) return;
+
+        const btn = document.createElement('button');
+        btn.textContent = `${index + 1} (${cardInfo.name} - 需時: ${cardInfo.price})`;
+        btn.dataset.choice = cardId;
+        btn.onclick = () => selectAction(player, cardId, btn);
+        actionButtonsContainer.appendChild(btn);
+        playerButtons.push(btn);
+    });
+
+    // 放棄第二次選擇
+    const skipButton = document.createElement('button');
+    skipButton.textContent = '完成選擇 (不選第二張)';
+    skipButton.dataset.choice = 'SKIP_SECOND_CHOICE';
+    skipButton.onclick = () => selectAction(player, 'SKIP_SECOND_CHOICE', skipButton);
+    actionButtonsContainer.appendChild(skipButton);
+    playerButtons.push(skipButton);
+
+    // 更新暫存
+    actionButtonsMap[player] = playerButtons;
+}
+
+function handleSingleChoicePlayerAction(player, choice, clickedButton) {
+    const buttons = actionButtonsMap[player] || [];
 
     if (playerActions[player] === choice) {
+        // 取消選擇
         playerActions[player] = null;
-        // 重新啟用按鈕，但要根據費用判斷
-        // 重新建立該玩家的 action 按鈕們
-        updateActionButtonsForPlayer(player);
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.classList.remove('selected');
+        });
     } else {
+        // 選擇新行動
         playerActions[player] = choice;
         buttons.forEach(btn => {
-            if (btn === clickedButton) {
-                btn.classList.add('selected');
-                btn.disabled = false;
-            } else {
-                btn.disabled = true;
-                btn.classList.remove('selected');
-            }
+            btn.disabled = (btn !== clickedButton);
+            if (btn === clickedButton) btn.classList.add('selected');
+            else btn.classList.remove('selected');
         });
     }
-    checkAllActions();
+}
+
+function handleTwoCardPlayerAction(player, choice, clickedButton) {
+    const turnState = playerTurnChoices[player];
+    if (!turnState) return; // 安全檢查
+
+    if (turnState.count === 0) {
+        // 第一次選擇
+        turnState.actions.push(choice);
+
+        if (choice === '休息') {
+            playerActions[player] = ['休息'];
+            turnState.count = 2;
+            disableAllActionButtonsForPlayer(player);
+            clickedButton.classList.add('selected');
+        } else {
+            turnState.count = 1;
+            turnState.firstChoiceWasCard = true;
+
+            updateButtonsForSecondChoice(player, choice); // 建立新的選擇 UI
+        }
+
+    } else if (turnState.count === 1 && turnState.firstChoiceWasCard) {
+        // 第二次選擇
+        if (choice === 'SKIP_SECOND_CHOICE') {
+            playerActions[player] = [turnState.actions[0]];
+        } else {
+            turnState.actions.push(choice);
+            playerActions[player] = [...turnState.actions];
+        }
+
+        turnState.count = 2;
+        disableAllActionButtonsForPlayer(player);
+        markPlayerSelectedActions(player, playerActions[player]);
+    }
 }
 
 function updateActionButtonsForPlayer(p) {
@@ -435,7 +573,19 @@ function updateActionButtonsForPlayer(p) {
 
 
 function checkAllActions() {
-    const allPlayersActed = players.every(p => playerActions[p] !== null && playerActions[p] !== undefined);
+    const allPlayersActed = players.every(p => {
+        const skillInfo = playerCharacterSkills[p];
+        const isTwoCardChooser = skillInfo && skillInfo.type === "TWO_CARD_CHOICES";
+        const turnState = playerTurnChoices[p];
+
+        if (isTwoCardChooser) {
+            // 完成的條件：turnState.count === 2
+            // (因為選休息或放棄第二次選擇都會使 count === 2)
+            return turnState && turnState.count === 2;
+        } else {
+            return playerActions[p] !== null && playerActions[p] !== undefined;
+        }
+    });
     document.getElementById('nextRoundBtn').disabled = !allPlayersActed;
 }
 
@@ -476,197 +626,369 @@ function adjustPlayerTimeManually(playerId, amount) {
 async function nextRound() {
     console.log("nextRound() called. Round:", round, "Player Actions:", JSON.parse(JSON.stringify(playerActions)));
 
+    // --- 0. 回合開始前的準備 ---
     document.getElementById('backToMarketSelectionBtn').style.display = 'none';
     players.forEach(p => {
         const manualControls = document.getElementById('manualControls' + p);
         if (manualControls) manualControls.style.display = 'none';
     });
 
+    // --- 1. 技能ID "10": 小熊啾啾 - 回合初全体加時間 ---
+    let skill10Active = players.some(p_id =>
+        playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "ROUND_START_TIME_BONUS_ALL"
+    );
+    if (skill10Active) {
+        const timeBonusValue = playerCharacterSkills[players.find(p_id => playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "ROUND_START_TIME_BONUS_ALL")] ?.value || 1;
+        players.forEach(p_id_to_receive_bonus => {
+            const timeBeforeBonus = playerTimes[p_id_to_receive_bonus];
+            playerTimes[p_id_to_receive_bonus] = Math.min(playerTimes[p_id_to_receive_bonus] + timeBonusValue, MAX_TIME);
+            const actualTimeGained = playerTimes[p_id_to_receive_bonus] - timeBeforeBonus;
+            if (actualTimeGained > 0) {
+                timeline[p_id_to_receive_bonus].push({
+                    type: 'skill_effect',
+                    subtype: 'round_time_bonus',
+                    detail: `回合開始，技能效果時間 +${actualTimeGained}`,
+                    timeChange: actualTimeGained,
+                    timeAfter: playerTimes[p_id_to_receive_bonus],
+                    round: round
+                });
+            }
+        });
+        // updateAllTimeBars(); // 稍後會統一更新
+        // renderTimeline();
+        console.log(`Round ${round}: All players received +${timeBonusValue} time due to 小熊啾啾 skill.`);
+    }
+
+    // --- 2. 檢查玩家選擇的卡片ID是否有效 (針對非休息行動) ---
+    // (此檢查針對 playerActions 中儲存的 cardId)
     for (const p of players) {
-        const action = playerActions[p];
-        if (action && action !== '休息') {
-            if (!cardData[action]) {
+        const playerActionData = playerActions[p]; // 可能為 cardId, '休息', 或 [cardId1, cardId2]
+        const actionsToCheck = Array.isArray(playerActionData) ? playerActionData : [playerActionData];
+        for (const action of actionsToCheck) {
+            if (action && action !== '休息' && !cardData[action]) {
                 console.error(`嚴重錯誤：玩家 ${p} 選擇的卡片ID ${action} 在 cardData 中找不到！`);
                 alert(`錯誤：找不到卡片 ${action} 的資料！遊戲可能無法繼續。`);
                 document.getElementById('nextRoundBtn').disabled = true;
-                return;
+                return; // 中止 nextRound
             }
         }
     }
 
+    // --- 3. 儲存當前回合狀態 (用於可能的競標取消回溯) ---
     gameStateBeforeNextRound = {
         playerTimes: JSON.parse(JSON.stringify(playerTimes)),
         timeline: JSON.parse(JSON.stringify(timeline)),
         round: round,
         availableCards: JSON.parse(JSON.stringify(availableCards)),
-        marketCards: JSON.parse(JSON.stringify(marketCards))
+        marketCards: JSON.parse(JSON.stringify(marketCards)) // 本回合市場上初始有哪些牌
     };
 
-    const choiceCount = {};
+    // --- 4. 處理玩家行動：休息 和 收集卡片選擇 ---
+    const choiceCount = {}; // { cardId: [playerA, playerB], ... }
     players.forEach(p => {
-        const action = playerActions[p];
-        if (action === '休息') {
-            const timeBeforeRestThisPlayer = playerTimes[p];
-            playerTimes[p] = Math.min(playerTimes[p] + REST_RECOVERY_AMOUNT, MAX_TIME);
-            timeline[p].push({
-                type: 'rest',
-                subtype: 'recover',
-                detail: `恢復時間：+${REST_RECOVERY_AMOUNT}`,
-                timeChange: playerTimes[p] - timeBeforeRestThisPlayer,
-                timeAfter: playerTimes[p],
-                round: round
-            });
-        } else if (action) {
-            choiceCount[action] = (choiceCount[action] || []).concat(p);
-        }
+        const playerActionData = playerActions[p]; // cardId, '休息', or [cardId1, cardId2]
+        const actionsToProcess = Array.isArray(playerActionData) ? playerActionData : [playerActionData];
+
+        actionsToProcess.forEach(action => {
+            if (action === '休息') {
+                const timeBeforeRest = playerTimes[p];
+                let recoveryAmount = REST_RECOVERY_AMOUNT;
+                const skillInfo = playerCharacterSkills[p];
+                if (skillInfo && skillInfo.type === "ENHANCED_REST") {
+                    recoveryAmount = skillInfo.value;
+                }
+                playerTimes[p] = Math.min(playerTimes[p] + recoveryAmount, MAX_TIME);
+                const actualRecovery = playerTimes[p] - timeBeforeRest;
+                if (actualRecovery >= 0) { // 確保有恢復才記錄，或至少記錄嘗試休息
+                    timeline[p].push({
+                        type: 'rest',
+                        subtype: 'recover',
+                        detail: `恢復時間：+${actualRecovery}${(recoveryAmount !== REST_RECOVERY_AMOUNT && skillInfo) ? ` (${skillInfo.description})` : ''}`,
+                        timeChange: actualRecovery,
+                        timeAfter: playerTimes[p],
+                        round: round
+                    });
+                }
+            } else if (action) { // action is a cardId
+                choiceCount[action] = (choiceCount[action] || []).concat(p);
+            }
+        });
     });
 
+    // --- 5. 處理卡片選擇：直接購買 或 進入競標 ---
     let biddingWasCancelledByUserAction = false;
     const chosenCardIds = Object.keys(choiceCount).map(id => parseInt(id));
+    // 建議對 chosenCardIds 進行排序，例如按照它們在 marketCards 中的順序，以確保競標的順序性
+    chosenCardIds.sort((a, b) => {
+        const indexA = gameStateBeforeNextRound.marketCards.indexOf(a);
+        const indexB = gameStateBeforeNextRound.marketCards.indexOf(b);
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+    });
+
 
     for (const cardId of chosenCardIds) {
-        const bidders = choiceCount[cardId];
+        const bidders = choiceCount[cardId]; // 想要這張卡的所有玩家
         const currentCardInfo = cardData[cardId];
 
         if (!currentCardInfo) {
-            console.error(`nextRound: 迴圈中卡片ID ${cardId} 的資料在 cardData 中找不到，跳過處理。`);
+            console.error(`nextRound: 處理卡片選擇時，ID ${cardId} 的資料在 cardData 中找不到，跳過。`);
             continue;
         }
 
         if (bidders.length === 1) {
+            // ------ 5.1 直接購買 ------
             const p = bidders[0];
-            const price = currentCardInfo.price;
-            if (playerTimes[p] >= price) { // 理論上 marketStep 已確保此條件
-                playerTimes[p] -= price;
+            const actualCost = getAdjustedCardCost(p, currentCardInfo.price, 'direct_buy');
+
+            if (playerTimes[p] >= actualCost) {
+                playerTimes[p] -= actualCost;
                 timeline[p].push({
                     type: 'buy',
                     subtype: 'direct',
-                    detail: `購買成功：${currentCardInfo.name}(價${price})`,
-                    timeChange: -price,
+                    detail: `購買成功: ${currentCardInfo.name} (原價 ${currentCardInfo.price}, 實花 ${actualCost}${actualCost < currentCardInfo.price ? ' [技能減免]' : ''})`,
+                    timeChange: -actualCost,
                     timeAfter: playerTimes[p],
                     round: round
                 });
+                // 從可用牌庫中移除已購買的卡片
+                const indexInAvailable = availableCards.indexOf(cardId);
+                if (indexInAvailable > -1) {
+                    availableCards.splice(indexInAvailable, 1);
+                    console.log(`卡片 ${cardId} (${currentCardInfo.name}) 已被 ${p} 直接購買，從可用卡片池移除。`);
+                }
             } else {
                 timeline[p].push({
                     type: 'buy_fail',
                     subtype: 'insufficient_funds_direct',
-                    detail: `購買失敗：${currentCardInfo.name}(需${price}，餘${playerTimes[p]})`,
+                    detail: `購買失敗: ${currentCardInfo.name} (需 ${actualCost}, 餘 ${playerTimes[p]})`,
                     timeChange: 0,
                     timeAfter: playerTimes[p],
                     round: round
                 });
             }
         } else if (bidders.length > 1) {
-            console.log(`卡片 (${currentCardInfo.name}) 進入競標。參與者: ${bidders.join(', ')}`);
+            // ------ 5.2 進入競標 ------
+            console.log(`卡片 ${cardId} (${currentCardInfo.name}) 進入競標。參與者: ${bidders.join(', ')}`);
+            const biddingResultOutcome = await performBiddingProcess(cardId, bidders);
 
-            // 預先為每位競標者加上一個 placeholder
-            const placeholderIndexes = {};
-            bidders.forEach(p => {
-                const placeholder = {
-                    type: 'phase_tick',
-                    subtype: 'pre_bidding_placeholder',
-                    detail: `準備競標：${currentCardInfo.name}`,
-                    timeChange: 0,
-                    timeAfter: playerTimes[p],
-                    round: round
-                };
-                placeholderIndexes[p] = timeline[p].length;
-                timeline[p].push(placeholder);
-            });
-
-            const userCancelledBiddingWindow = await performBiddingProcess(cardId, bidders);
-
-            if (userCancelledBiddingWindow) {
-                biddingWasCancelledByUserAction = true;
-                console.log(`卡片 (${currentCardInfo.name}) 的競標取消`);
-                break;
+            if (biddingResultOutcome.userCancelled) {
+                biddingWasCancelledByUserAction = true; // 由 cancelBidding() 函式處理狀態回溯
+                console.log(`卡片 ${cardId} (${currentCardInfo.name}) 的競標被用戶操作取消。`);
+                break; // 跳出 for (const cardId of chosenCardIds) 迴圈
             }
 
-            let winnerOfThisBid = null;
-            for (const p_bidder of bidders) {
-                if (timeline[p_bidder] && timeline[p_bidder].length > 0) {
-                    const recentEvent = timeline[p_bidder][timeline[p_bidder].length - 1];
-                    if (recentEvent && recentEvent.type === 'bidding' && recentEvent.subtype === 'win' &&
-                        recentEvent.round === round && recentEvent.detail && recentEvent.detail.includes(currentCardInfo.name)) {
-                        winnerOfThisBid = p_bidder;
-                        break;
-                    }
+            if (biddingResultOutcome.winner) {
+                // 卡片在競標中被贏得 (resolveBidding 已處理 timeline 和 playerTimes)
+                const indexInAvailable = availableCards.indexOf(cardId);
+                if (indexInAvailable > -1) {
+                    availableCards.splice(indexInAvailable, 1);
+                    console.log(`卡片 ${cardId} (${currentCardInfo.name}) 已被 ${biddingResultOutcome.winner} 競標贏得，從可用卡片池移除。`);
                 }
             }
+            // resolveBidding 內部已處理大部分 timeline 事件
 
-            // 根據勝敗與放棄情況決定是否替換 placeholder 或移除
-            bidders.forEach(p => {
-                const lastIndex = placeholderIndexes[p];
-                const isLoser = (p !== winnerOfThisBid);
-                const gaveUp = timeline[p].some(
-                    event => event.type === 'bidding' &&
-                    event.subtype === 'give_up' &&
-                    event.round === round
-                );
-
-                if (isLoser || gaveUp) {
-                    timeline[p].splice(lastIndex, 1);
-                } else {
-                    timeline[p][lastIndex] = {
-                        ...timeline[p][lastIndex],
-                        subtype: 'loser_tick',
-                        detail: `競標成功：${currentCardInfo.name}`
-                    };
-                }
-            });
+            if (biddingResultOutcome.needsConsolationDraw && biddingResultOutcome.tiedPlayersForConsolation.length > 0) {
+                await startConsolationDrawPhase(biddingResultOutcome.tiedPlayersForConsolation);
+                // startConsolationDrawPhase 內部會處理卡片的購買、時間扣除、timeline 及 availableCards 的移除
+            }
         }
-    }
+    } // 結束 for (const cardId of chosenCardIds)
 
+    // --- 6. 處理競標取消 ---
     if (biddingWasCancelledByUserAction) {
-        console.log("nextRound processing halted due to user cancelling a bid. State was rolled back by cancelBidding function.");
+        console.log("nextRound 因競標取消而中止。狀態應已由 cancelBidding() 回溯。");
+        // cancelBidding 應已重設UI，這裡直接返回
         return;
     }
 
-    const cardsOnMarketThisRound = gameStateBeforeNextRound.marketCards;
-    if (cardsOnMarketThisRound && cardsOnMarketThisRound.length > 0) {
-        console.log(`回合 ${round} 結束，棄置市場上出現過的卡片: ${cardsOnMarketThisRound.join(', ')}`);
-        cardsOnMarketThisRound.forEach(cardIdToRemove => {
+    // --- 7. 回合結束清理：棄置本回合市場上未被購買的卡片 ---
+    // gameStateBeforeNextRound.marketCards 是本回合初始放在市場上的卡片
+    // 任何在 gameStateBeforeNextRound.marketCards 中，但現在仍然存在於 availableCards 的卡片，都應被棄置
+    // 注意：直接購買、競標成功、安慰性抽牌獲得的卡片都已從 availableCards 移除
+    const initialMarketCards = gameStateBeforeNextRound.marketCards;
+    if (initialMarketCards && initialMarketCards.length > 0) {
+        console.log(`回合 ${round} 結束，檢查市場棄牌: ${initialMarketCards.join(', ')}`);
+        initialMarketCards.forEach(cardIdToRemove => {
             const indexInAvailable = availableCards.indexOf(cardIdToRemove);
-            if (indexInAvailable > -1) {
+            if (indexInAvailable > -1) { // 如果這張市場卡還在 availableCards (表示未通過任何方式被獲取)
                 availableCards.splice(indexInAvailable, 1);
                 const cardInfo = cardData[cardIdToRemove] || {
                     name: `ID ${cardIdToRemove}`
                 };
-                console.log(`卡片 ${cardIdToRemove} (${cardInfo.name}) 已從可用卡片池中移除`);
-            } else {
-                const cardInfo = cardData[cardIdToRemove] || {
-                    name: `ID ${cardIdToRemove}`
-                };
-                console.warn(`嘗試棄置市場卡片 ${cardIdToRemove} (${cardInfo.name}) 時，它已不在 availableCards 中 (可能已被購買或競標成功)。`);
+                console.log(`市場卡 ${cardIdToRemove} (${cardInfo.name}) 未售出，已從可用卡片池中移除 (棄置)。`);
             }
         });
         console.log(`棄置操作後，可用卡片剩餘: ${availableCards.length}`);
     }
 
+
+    // --- 8. 更新回合數及UI ---
     round++;
     document.getElementById('roundTitle').textContent = '第' + round + '回合';
-    playerActions = {};
+    playerActions = {}; // 清空上一回合的玩家行動記錄
+    if (typeof playerTurnChoices !== 'undefined') { // 如果使用了 playerTurnChoices (為技能6)
+        players.forEach(p => {
+            playerTurnChoices[p] = {
+                count: 0,
+                actions: [],
+                firstChoiceWasCard: false
+            };
+        });
+    }
     document.getElementById('nextRoundBtn').disabled = true;
+
     updateAllTimeBars();
     renderTimeline();
-    gameStateBeforeNextRound = null;
+    gameStateBeforeNextRound = null; // 清理儲存的狀態
     console.log("nextRound completed. Advancing to round:", round);
 
-    // 檢查遊戲結束條件
-    // 如果可用卡片為0，並且當前市場選擇區也沒有卡片按鈕（表示drawMarket也抽不出卡了）
-    const marketAreaButtons = document.getElementById('marketArea').getElementsByTagName('button');
+    // --- 9. 檢查遊戲結束條件 ---
+    // 如果可用卡片為0，並且 drawMarket() 之後市場區沒有可選按鈕 (表示牌抽完了也擺不上市場了)
+    const marketAreaContainer = document.getElementById('marketArea'); // 先存起來
+    drawMarket(); // 先畫出市場，才能檢查按鈕
+    const marketAreaButtons = marketAreaContainer.getElementsByTagName('button');
+
     if (availableCards.length === 0 && marketAreaButtons.length === 0) {
         alert("所有卡片均已處理完畢，遊戲結束！");
-        document.getElementById('marketSelection').innerHTML = '<h2>遊戲結束</h2>';
+        document.getElementById('marketSelection').innerHTML = '<h2>遊戲結束 - 所有卡片已處理</h2>';
         document.getElementById('playerActions').style.display = 'none';
+        document.getElementById('nextRoundBtn').disabled = true;
+        // 可以考慮禁用所有遊戲相關按鈕
         return;
     }
 
+    // --- 10. 準備下一回合的市場選擇 ---
     document.getElementById('marketSelection').style.display = 'block';
     document.getElementById('playerActions').style.display = 'none';
-    selectedMarket = [];
-    marketCards = [];
-    drawMarket();
+    selectedMarket = []; // 清空市場點選的卡片 (drawMarket內部也會清，但這裡重複確保)
+    // marketCards 代表本回合最終確認的市場卡，應在 drawMarket 前清空或在 confirmMarket 後處理
+    marketCards = []; // 清空上一回合確定的市場牌，因為 drawMarket 會重新產生
+    // drawMarket(); // 已在檢查遊戲結束條件前調用
+}
+
+function getAdjustedCardCost(playerId, basePrice, purchaseContext) {
+    let finalPrice = basePrice;
+    const skillInfo = playerCharacterSkills[playerId];
+
+    if (skillInfo) {
+        if (skillInfo.type === "REDUCE_COST_GENERAL") {
+            finalPrice -= skillInfo.value;
+        } else if (skillInfo.type === "REDUCE_COST_CONSOLATION_DRAW" && purchaseContext === 'consolation_draw') {
+            finalPrice -= skillInfo.value;
+        }
+    }
+    return Math.max(0, finalPrice); // 確保價格不為負
+}
+
+
+async function startConsolationDrawPhase(tiedPlayersList) {
+    console.log("開始安慰性抽牌階段，參與者:", tiedPlayersList.join(', '));
+    // 按照 A > B > C 順序
+    const sortedTiedPlayers = tiedPlayersList.sort((a, b) => PLAYER_ID_MAP.indexOf(a) - PLAYER_ID_MAP.indexOf(b));
+
+    for (const player of sortedTiedPlayers) {
+        if (availableCards.length === 0) {
+            console.log("牌庫已無卡牌可供安慰性抽取！");
+            // 可以選擇為所有仍在等待的 tiedPlayers 添加一個事件
+            alert("牌庫已空，安慰性抽牌中止。");
+            break;
+        }
+
+        const drawnCardId = availableCards.shift(); // 從牌庫頂抽牌並立即從牌庫移除
+        const drawnCardInfo = cardData[drawnCardId];
+
+        if (!drawnCardInfo) {
+            console.error(`安慰性抽牌錯誤：找不到卡片ID ${drawnCardId} 的資料！該卡片已被消耗。`);
+            // 因為卡片已從 availableCards 移除，所以這裡直接 continue
+            continue;
+        }
+        console.log(`玩家 ${player} 在安慰性抽牌階段抽到了 ${drawnCardInfo.name} (ID: ${drawnCardId})`);
+
+        const originalPrice = drawnCardInfo.price;
+        // 'consolation_draw' 作為 purchaseContext
+        const actualCost = getAdjustedCardCost(player, originalPrice, 'consolation_draw');
+
+        const wantsToBuy = await promptConsolationPurchase(player, drawnCardInfo, actualCost);
+
+        if (wantsToBuy && playerTimes[player] >= actualCost) {
+            playerTimes[player] -= actualCost;
+            timeline[player].push({
+                type: 'draw_acquire',
+                subtype: 'consolation',
+                detail: `安慰性抽牌獲得 ${drawnCardInfo.name} (原價 ${originalPrice}, 花費 ${actualCost}${actualCost < originalPrice ? ' [技能減免]' : ''})`,
+                timeChange: -actualCost,
+                timeAfter: playerTimes[player],
+                round: round
+            });
+            console.log(`玩家 ${player} 透過安慰性抽牌獲得 ${drawnCardInfo.name}。`);
+        } else {
+            // 卡片已被抽走 (availableCards.shift())，即使不買或買不起，也視為消耗
+            timeline[player].push({
+                type: 'draw_decline',
+                subtype: 'consolation',
+                detail: `安慰性抽牌放棄/無法購買 ${drawnCardInfo.name}${(wantsToBuy && playerTimes[player] < actualCost) ? ' (時間不足)' : ''}`,
+                timeChange: 0,
+                timeAfter: playerTimes[player],
+                round: round
+            });
+            console.log(`玩家 ${player} 放棄/無法購買安慰性抽牌的 ${drawnCardInfo.name}。卡片 ${drawnCardId} 已被消耗。`);
+        }
+        updateTimeBar(player); // 即時更新該玩家時間條
+        renderTimeline(); // 即時更新時間軸
+    }
+    console.log("安慰性抽牌階段結束。");
+    updateAllTimeBars(); // 以防萬一，再次更新所有時間條
+}
+
+
+async function promptConsolationPurchase(player, cardInfo, actualCost) {
+    return new Promise(resolve => {
+        const oldWindow = document.querySelector('.consolation-purchase-window');
+        if (oldWindow) oldWindow.remove();
+
+        const windowDiv = document.createElement('div');
+        // 建議為這個彈窗使用特定的class，或者確保 .bidding-window 樣式適用
+        windowDiv.className = 'bidding-window consolation-purchase-window';
+        const playerCharNameKey = playerCharacterSelections[player];
+        const playerCharName = playerCharNameKey ? characterSettings[playerCharNameKey].name : '';
+
+
+        windowDiv.innerHTML = `
+            <h3>玩家 ${player} ${playerCharName ? `(${playerCharName})` : ''} - 安慰性抽牌</h3>
+            <p>您抽到了：<strong>${cardInfo.name}</strong> (ID: ${cardInfo.id || currentBidding.cardId})</p> <p>效果：${cardInfo.effect || '無特殊效果描述'}</p> <p>原價: ${cardInfo.price}, 您的花費: <strong>${actualCost}</strong></p>
+            <p>您目前時間: ${playerTimes[player]}</p>
+        `;
+
+        const buyButton = document.createElement('button');
+        buyButton.textContent = `購買 (花費 ${actualCost})`;
+        if (playerTimes[player] < actualCost) {
+            buyButton.disabled = true;
+            buyButton.title = "時間不足";
+        }
+        buyButton.onclick = () => {
+            windowDiv.remove();
+            resolve(true);
+        };
+
+        const passButton = document.createElement('button');
+        passButton.textContent = '放棄';
+        passButton.onclick = () => {
+            windowDiv.remove();
+            resolve(false);
+        };
+
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.style.marginTop = '15px';
+        buttonsContainer.appendChild(buyButton);
+        buttonsContainer.appendChild(passButton);
+        windowDiv.appendChild(buttonsContainer);
+
+        document.body.appendChild(windowDiv);
+        windowDiv.focus(); // 讓彈窗獲得焦點
+    });
 }
 
 async function performBiddingProcess(cardId, bidders) {
@@ -761,53 +1083,64 @@ function resolveBidding() {
         name: `未知卡片ID ${cardIdBeingBidOn}`,
         price: 0
     };
-
     const activeBids = currentBidding.bids.filter(b => b.bid > 0);
     const currentRoundForEvent = gameStateBeforeNextRound ? gameStateBeforeNextRound.round : round;
 
-    let maxBidValue = 0;
-    let winners = [];
+    let biddingOutcome = { // 用於傳遞給 performBiddingProcess 的 Promise
+        userCancelled: false,
+        bidResolvedWithoutConsolation: false, // 標記競標是否有明確贏家 (無需安慰抽牌)
+        winner: null,
+        needsConsolationDraw: false,
+        tiedPlayersForConsolation: []
+    };
 
     if (activeBids.length === 0) {
+        // ====== CASE 1: 所有參與者都放棄出價 ======
         currentBidding.bidders.forEach(p => {
             timeline[p].push({
                 type: 'bidding',
                 subtype: 'pass_all',
-                detail: `放棄流標：${cardInfo.name}(${cardInfo.price})`,
+                detail: `全員放棄競標: ${cardInfo.name} (原價 ${cardInfo.price})`,
                 timeChange: 0,
                 timeAfter: playerTimes[p],
                 round: currentRoundForEvent
             });
         });
-        console.log(`卡片 (${cardInfo.name}) 因全員放棄而流標`);
+        console.log(`卡片 ${cardIdBeingBidOn} (${cardInfo.name}) 因全員放棄而流標。`);
+        biddingOutcome.bidResolvedWithoutConsolation = true; // 算是有結果 (結果是流標)
     } else {
+        // ====== CASE 2: 有有效出價，找出最高出價者 ======
+        let maxBidValue = 0;
         activeBids.forEach(b => {
             if (b.bid > maxBidValue) {
                 maxBidValue = b.bid;
-                winners = [b.player];
-            } else if (b.bid === maxBidValue) {
-                winners.push(b.player);
             }
         });
 
-        if (winners.length === 1) {
-            const winner = winners[0];
-            playerTimes[winner] -= maxBidValue;
+        const potentialWinners = activeBids.filter(b => b.bid === maxBidValue).map(b => b.player);
+
+        if (potentialWinners.length === 1) {
+            // ------ SUBCASE 2.1: 只有一位最高出價者 ------
+            const winner = potentialWinners[0];
+            const actualCost = getAdjustedCardCost(winner, maxBidValue, 'bid_win');
+
+            playerTimes[winner] -= actualCost;
             timeline[winner].push({
                 type: 'bidding',
                 subtype: 'win',
-                detail: `競標成功：${cardInfo.name}(出價${maxBidValue}，價${cardInfo.price})`,
-                timeChange: -maxBidValue,
+                detail: `競標成功: ${cardInfo.name} (出價 ${maxBidValue}, 實際花費 ${actualCost}${actualCost < maxBidValue ? ' [技能減免]' : ''}, 原價 ${cardInfo.price})`,
+                timeChange: -actualCost,
                 timeAfter: playerTimes[winner],
                 round: currentRoundForEvent
             });
 
+            // 為其他出價者記錄失敗或放棄
             currentBidding.bids.forEach(({
                 player: p,
                 bid: b
             }) => {
                 if (p !== winner) {
-                    const detailText = b > 0 ? `競標失敗：${cardInfo.name}(出價${b})` : `放棄競標：${cardInfo.name}`;
+                    const detailText = b > 0 ? `競標 ${cardInfo.name} 失敗 (出價 ${b})` : `放棄競標 ${cardInfo.name}`;
                     const sub = b > 0 ? 'lose' : 'pass';
                     timeline[p].push({
                         type: 'bidding',
@@ -819,50 +1152,105 @@ function resolveBidding() {
                     });
                 }
             });
-            console.log(`卡片 (${cardInfo.name}) 由 ${winner} 競標成功`);
+            console.log(`卡片 ${cardIdBeingBidOn} (${cardInfo.name}) 由 ${winner} 以 ${maxBidValue} (實際 ${actualCost}) 競標成功。`);
+            biddingOutcome.bidResolvedWithoutConsolation = true;
+            biddingOutcome.winner = winner;
+
         } else {
-            currentBidding.bids.forEach(({
-                player: p,
-                bid: b
-            }) => {
-                const commonProps = {
-                    timeChange: 0,
-                    timeAfter: playerTimes[p],
-                    round: currentRoundForEvent
-                };
-                let detailText, sub;
-                if (winners.includes(p)) {
-                    sub = 'tie_fail';
-                    detailText = `平手流標：${cardInfo.name}(出價${maxBidValue})`;
-                } else if (b > 0) {
-                    sub = 'lose';
-                    detailText = `競標失敗：${cardInfo.name}(出價${b})`;
-                } else {
-                    sub = 'pass';
-                    detailText = `放棄競標：${cardInfo.name}`;
-                }
-                timeline[p].push({
+            // ------ SUBCASE 2.2: 多位最高出價者 (平手) ------
+            console.log(`卡片 ${cardIdBeingBidOn} (${cardInfo.name}) 出現平手，最高出價 ${maxBidValue}，參與者: ${potentialWinners.join(', ')}`);
+            let skill4Winner = null;
+            const playersWithSkill4InTie = potentialWinners.filter(p_id =>
+                playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "WIN_BID_TIE"
+            );
+
+            if (playersWithSkill4InTie.length === 1) {
+                skill4Winner = playersWithSkill4InTie[0];
+                console.log(`玩家 ${skill4Winner} (追逐夢想的人) 在平局中勝出！`);
+            } else if (playersWithSkill4InTie.length > 1) {
+                console.log(`多名玩家 (${playersWithSkill4InTie.join(', ')}) 擁有「追逐夢想的人」技能並在平局中，技能無法單獨決定勝者，視為普通平局。`);
+                // 技能無法解決，將進入安慰性抽牌或流標
+            } else {
+                console.log(`平局中無玩家擁有「追逐夢想的人」技能或技能不適用。`);
+                // 將進入安慰性抽牌或流標
+            }
+
+            if (skill4Winner) {
+                const actualCost = getAdjustedCardCost(skill4Winner, maxBidValue, 'bid_win');
+                playerTimes[skill4Winner] -= actualCost;
+                timeline[skill4Winner].push({
                     type: 'bidding',
-                    subtype: sub,
-                    detail: detailText,
-                    ...commonProps
+                    subtype: 'win_skill', // 與普通win區分
+                    detail: `技能勝出: ${cardInfo.name} (出價 ${maxBidValue}, 實際花費 ${actualCost}${actualCost < maxBidValue ? ' [技能減免]' : ''}, 原價 ${cardInfo.price})`,
+                    timeChange: -actualCost,
+                    timeAfter: playerTimes[skill4Winner],
+                    round: currentRoundForEvent
                 });
-            });
-            console.log(`卡片 (${cardInfo.name}) 因出價相同而流標`);
+
+                // 為其他平手者及出價者記錄
+                currentBidding.bids.forEach(({
+                    player: p,
+                    bid: b
+                }) => {
+                    if (p !== skill4Winner) {
+                        let detailText;
+                        let sub_type;
+                        if (potentialWinners.includes(p)) { // 其他一同平手的人
+                            detailText = `競標 ${cardInfo.name} 平手後因技能落敗 (出價 ${b})`;
+                            sub_type = 'lose_tie_skill';
+                        } else if (b > 0) { // 其他出價較低的人
+                            detailText = `競標 ${cardInfo.name} 失敗 (出價 ${b})`;
+                            sub_type = 'lose';
+                        } else { // 放棄的人
+                            detailText = `放棄競標 ${cardInfo.name}`;
+                            sub_type = 'pass';
+                        }
+                        timeline[p].push({
+                            type: 'bidding',
+                            subtype: sub_type,
+                            detail: detailText,
+                            timeChange: 0,
+                            timeAfter: playerTimes[p],
+                            round: currentRoundForEvent
+                        });
+                    }
+                });
+                biddingOutcome.bidResolvedWithoutConsolation = true;
+                biddingOutcome.winner = skill4Winner;
+            } else {
+                // 平手且無技能解決 -> 卡片流標，觸發安慰性抽牌
+                console.log(`卡片 ${cardIdBeingBidOn} (${cardInfo.name}) 競標平手且無技能解決，卡片流標，準備進入安慰性抽牌階段。`);
+                potentialWinners.forEach(p_id => {
+                    timeline[p_id].push({
+                        type: 'bidding',
+                        subtype: 'tie_unresolved',
+                        detail: `${cardInfo.name} 競標平手流標 (出價 ${maxBidValue})，將進行安慰性抽牌`,
+                        timeChange: 0,
+                        timeAfter: playerTimes[p_id],
+                        round: currentRoundForEvent
+                    });
+                });
+                biddingOutcome.needsConsolationDraw = true;
+                biddingOutcome.tiedPlayersForConsolation = [...potentialWinners];
+                // 卡片本身在此次競標中未售出
+            }
         }
     }
 
     if (currentBidding.resolvePromise) {
-        currentBidding.resolvePromise(false);
+        currentBidding.resolvePromise(biddingOutcome);
     }
     currentBidding = {
         cardId: null,
         bidders: [],
         bids: [],
         step: 0,
-        resolvePromise: null
+        resolvePromise: null,
+        needsConsolationDraw: false,
+        tiedPlayersForConsolation: [] // 重設
     };
 }
+
 
 function cancelBidding(fullCancel = false) {
     const biddingWindowDom = document.querySelector('.bidding-window');

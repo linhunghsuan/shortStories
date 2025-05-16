@@ -1,12 +1,86 @@
 {
-    "1": { "name": "嘗試新奇事物的人", "startTime": 4, "specialAbility": "每次獲得故事卡時，所花的時間少1點" },
-    "2": { "name": "對未來迷惘的人", "startTime": 6, "specialAbility": "抽牌時，抽2選1" },
-    "3": { "name": "自由自在的人", "startTime": 6, "specialAbility": "休息時可以獲得7點時間" },
-    "4": { "name": "追逐夢想的人", "startTime": 6, "specialAbility": "競標平手時直接獲勝" },
-    "5": { "name": "堅定志向的人", "startTime": 6, "specialAbility": "選擇抽牌時，少花1點時間" },
-    "6": { "name": "藝術家性格的人", "startTime": 6, "specialAbility": "每個回合可以選2張故事卡" },
-    "7": { "name": "小黑", "startTime": 4, "specialAbility": "每回合所有玩家自己選擇1項能力增加，1項能力減少" },
-    "8": { "name": "街頭故事李白", "startTime": 4, "specialAbility": "每回合場上多翻1張故事卡" },
-    "9": { "name": "用生命影響他人的人", "startTime": 4, "specialAbility": "每次+自我實現時，所有玩家+身心健康" },
-    "10": { "name": "小熊啾啾", "startTime": 4, "specialAbility": "每回合所有玩家都會+1時間" }
+    "1": {
+        "name": "嘗試新奇事物的人",
+        "startTime": 4,
+        "skill": {
+            "type": "REDUCE_COST_GENERAL",
+            "value": 1,
+            "description": "每次獲得故事卡時，所花的時間少1點"
+        }
+    },
+    "2": {
+        "name": "對未來迷惘的人",
+        "startTime": 6,
+        "skill": {
+            "type": "NONE",
+            "description": "抽牌時，抽2選1"
+        }
+    },
+    "3": {
+        "name": "自由自在的人",
+        "startTime": 6,
+        "skill": {
+            "type": "ENHANCED_REST",
+            "value": 7,
+            "description": "休息時可以獲得7點時間"
+        }
+    },
+    "4": {
+        "name": "追逐夢想的人",
+        "startTime": 6,
+        "skill": {
+            "type": "WIN_BID_TIE",
+            "description": "競標平手時直接獲勝"
+        }
+    },
+    "5": {
+        "name": "堅定志向的人",
+        "startTime": 6,
+        "skill": {
+            "type": "REDUCE_COST_CONSOLATION_DRAW",
+            "value": 1,
+            "description": "選擇抽牌時，少花1點時間"
+        }
+    },
+    "6": {
+        "name": "藝術家性格的人",
+        "startTime": 6,
+        "skill": {
+            "type": "TWO_CARD_CHOICES",
+            "description": "每個回合可以選2張故事卡"
+        }
+    },
+    "7": {
+        "name": "小黑",
+        "startTime": 4,
+        "skill": {
+            "type": "NONE",
+            "description": "每回合所有玩家自己選擇1項能力增加，1項能力減少"
+        }
+    },
+    "8": {
+        "name": "街頭故事李白",
+        "startTime": 4,
+        "skill": {
+            "type": "EXTRA_MARKET_CARD",
+            "description": "每回合場上多翻1張故事卡"
+        }
+    },
+    "9": {
+        "name": "用生命影響他人的人",
+        "startTime": 4,
+        "skill": {
+            "type": "NONE",
+            "description": "每次+自我實現時，所有玩家+身心健康"
+        }
+    },
+    "10": {
+        "name": "小熊啾啾",
+        "startTime": 4,
+        "skill": {
+            "type": "ROUND_START_TIME_BONUS_ALL",
+            "value": 1,
+            "description": "每回合所有玩家都會+1時間"
+        }
+    }
 }
