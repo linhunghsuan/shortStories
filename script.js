@@ -297,8 +297,6 @@ function drawMarket() {
 
     const maxSelection = determineMaxMarketSelectionCount();
     document.getElementById('marketSelectionTitle').textContent = `選擇本回合的 ${maxSelection} 張市場卡片`;
-    document.getElementById('marketInfo').textContent = `點擊下方卡片進行選擇 (請選出 ${maxSelection} 張作為本回合市場卡片)`;
-
 
     if (availableCards.length === 0) {
         marketArea.innerHTML = '<p>市場提示: 所有卡片已被使用完畢！</p>';
