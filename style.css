@@ -264,7 +264,7 @@ button.selected {
 .event.manual_adjust.minus { background-color: #ffebee; /* 手動減時 - 淡粉紅色 */ }
 .event.skill_effect { background-color: #673AB7; /* 深紫色 */ }
 .event.skill_effect.round_time_bonus { background-color: #7E57C2; /* 較淺的紫色 */ }
-.event.draw_acquire.consolation { background-color: #009688; /* 青色 */ }
+.event.draw_acquire.consolation { background-color: #FF9800; /* 橘色 */ }
 .event.draw_decline.consolation { background-color: #FF9800; /* 橘色 */ }
 .event.bidding.win_skill { background-color: #FFC107; /* 與普通 win 類似，可稍作區別或共用 */ color: #333; }
 .event.bidding.lose_tie_skill { background-color: #A1887F; /* 棕灰色 */ }

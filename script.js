@@ -195,7 +195,6 @@ function startGame() {
         if (playerTitleElement) playerTitleElement.textContent = `${pid}玩家`; // 重設標題
         if (timelineTitleElement) timelineTitleElement.textContent = `${pid}玩家 時間軸`; // 重設標題
         if (manualControls) manualControls.innerHTML = ''; // 清空手動按鈕
-
     });
 
     players.forEach(p_id => {
@@ -212,8 +211,6 @@ function startGame() {
             type: "NONE"
         };
         playerTimes[p_id] = character.startTime;
-
-
         document.querySelector(`#player${p_id} > h3`).textContent = `${p_id}玩家 (${character.name})`;
         document.querySelector(`#timeline${p_id} > h3`).textContent = `${p_id}玩家 (${character.name}) (${character.startTime}) 時間軸`;
 
@@ -341,6 +338,7 @@ function marketStep() {
 
     checkAllActions();
 }
+
 function createActionButton(player, choice, displayIndex) {
     const btn = document.createElement('button');
 
@@ -366,8 +364,6 @@ function createActionButton(player, choice, displayIndex) {
     }
     actionButtonsMap[player].push(btn);
 }
-
-
 
 // 「重設市場卡片選擇」按鈕的邏輯 (在市場選擇階段使用)
 function resetMarketCardSelection() {
@@ -440,6 +436,7 @@ function disableAllActionButtonsForPlayer(player) {
     const buttons = Array.from(actionButtonsContainer.children);
     buttons.forEach(btn => btn.disabled = true);
 }
+
 function updateButtonsForSecondChoice(player, firstCardId) {
     const actionButtonsContainer = document.getElementById('actions' + player);
     actionButtonsContainer.innerHTML = ''; // 清空所有舊按鈕
@@ -455,7 +452,6 @@ function updateButtonsForSecondChoice(player, firstCardId) {
         if (cardId === firstCardId) return;
         const cardInfo = cardData[cardId];
         if (!cardInfo) return;
-
         const btn = document.createElement('button');
         btn.textContent = `${index + 1} (${cardInfo.name} - 需時: ${cardInfo.price})`;
         btn.dataset.choice = cardId;
@@ -471,7 +467,6 @@ function updateButtonsForSecondChoice(player, firstCardId) {
     skipButton.onclick = () => selectAction(player, 'SKIP_SECOND_CHOICE', skipButton);
     actionButtonsContainer.appendChild(skipButton);
     playerButtons.push(skipButton);
-
     // 更新暫存
     actionButtonsMap[player] = playerButtons;
 }
@@ -570,8 +565,6 @@ function updateActionButtonsForPlayer(p) {
     createActionButton(p, '休息');
 }
 
-
-
 function checkAllActions() {
     const allPlayersActed = players.every(p => {
         const skillInfo = playerCharacterSkills[p];
@@ -621,7 +614,6 @@ function adjustPlayerTimeManually(playerId, amount) {
     }
 }
 
-
 // ========= 核心遊戲邏輯: 回合進程 & 競標 =========
 async function nextRound() {
     console.log("nextRound() called. Round:", round, "Player Actions:", JSON.parse(JSON.stringify(playerActions)));
@@ -654,8 +646,6 @@ async function nextRound() {
                 });
             }
         });
-        // updateAllTimeBars(); // 稍後會統一更新
-        // renderTimeline();
         console.log(`Round ${round}: All players received +${timeBonusValue} time due to 小熊啾啾 skill.`);
     }
 
@@ -727,7 +717,6 @@ async function nextRound() {
         if (indexB === -1) return -1;
         return indexA - indexB;
     });
-
 
     for (const cardId of chosenCardIds) {
         const bidders = choiceCount[cardId]; // 想要這張卡的所有玩家
@@ -823,8 +812,6 @@ async function nextRound() {
         });
         console.log(`棄置操作後，可用卡片剩餘: ${availableCards.length}`);
     }
-
-
     // --- 8. 更新回合數及UI ---
     round++;
     document.getElementById('roundTitle').textContent = '第' + round + '回合';
@@ -864,9 +851,7 @@ async function nextRound() {
     document.getElementById('marketSelection').style.display = 'block';
     document.getElementById('playerActions').style.display = 'none';
     selectedMarket = []; // 清空市場點選的卡片 (drawMarket內部也會清，但這裡重複確保)
-    // marketCards 代表本回合最終確認的市場卡，應在 drawMarket 前清空或在 confirmMarket 後處理
     marketCards = []; // 清空上一回合確定的市場牌，因為 drawMarket 會重新產生
-    // drawMarket(); // 已在檢查遊戲結束條件前調用
 }
 
 function getAdjustedCardCost(playerId, basePrice, purchaseContext) {
@@ -885,82 +870,168 @@ function getAdjustedCardCost(playerId, basePrice, purchaseContext) {
 
 
 async function startConsolationDrawPhase(tiedPlayersList) {
-    console.log("開始安慰性抽牌階段，參與者:", tiedPlayersList.join(', '));
-    // 按照 A > B > C 順序
+    console.log("開始安慰性抽牌/購買階段，參與者:", tiedPlayersList.join(', '));
+    // 依照 A > B > C 順序 (假設 PLAYER_ID_MAP 已定義順序)
     const sortedTiedPlayers = tiedPlayersList.sort((a, b) => PLAYER_ID_MAP.indexOf(a) - PLAYER_ID_MAP.indexOf(b));
 
     for (const player of sortedTiedPlayers) {
         if (availableCards.length === 0) {
-            console.log("牌庫已無卡牌可供安慰性抽取！");
-            // 可以選擇為所有仍在等待的 tiedPlayers 添加一個事件
-            alert("牌庫已空，安慰性抽牌中止。");
-            break;
+            console.log("市場已無卡牌可供安慰性選擇！");
+            alert("市場已無卡牌，安慰性購買中止。");
+            break; // 若無可用卡片，則中止此階段
         }
 
-        const drawnCardId = availableCards.shift(); // 從牌庫頂抽牌並立即從牌庫移除
-        const drawnCardInfo = cardData[drawnCardId];
+        console.log(`輪到玩家 ${player} 進行安慰性卡片選擇。`);
+        // 玩家從可用的市場卡片中選擇一張
+        const chosenCardId = await promptConsolationCardChoice(player, availableCards);
 
-        if (!drawnCardInfo) {
-            console.error(`安慰性抽牌錯誤：找不到卡片ID ${drawnCardId} 的資料！該卡片已被消耗。`);
-            // 因為卡片已從 availableCards 移除，所以這裡直接 continue
-            continue;
-        }
-        console.log(`玩家 ${player} 在安慰性抽牌階段抽到了 ${drawnCardInfo.name} (ID: ${drawnCardId})`);
-
-        const originalPrice = drawnCardInfo.price;
-        // 'consolation_draw' 作為 purchaseContext
-        const actualCost = getAdjustedCardCost(player, originalPrice, 'consolation_draw');
-
-        const wantsToBuy = await promptConsolationPurchase(player, drawnCardInfo, actualCost);
-
-        if (wantsToBuy && playerTimes[player] >= actualCost) {
-            playerTimes[player] -= actualCost;
+        if (!chosenCardId) {
+            console.log(`玩家 ${player} 放棄選擇安慰卡或無卡可選。`);
             timeline[player].push({
-                type: 'draw_acquire',
-                subtype: 'consolation',
-                detail: `安慰性抽牌獲得 ${drawnCardInfo.name} (原價 ${originalPrice}, 花費 ${actualCost}${actualCost < originalPrice ? ' [技能減免]' : ''})`,
-                timeChange: -actualCost,
-                timeAfter: playerTimes[player],
-                round: round
-            });
-            console.log(`玩家 ${player} 透過安慰性抽牌獲得 ${drawnCardInfo.name}。`);
-        } else {
-            // 卡片已被抽走 (availableCards.shift())，即使不買或買不起，也視為消耗
-            timeline[player].push({
-                type: 'draw_decline',
-                subtype: 'consolation',
-                detail: `安慰性抽牌放棄/無法購買 ${drawnCardInfo.name}${(wantsToBuy && playerTimes[player] < actualCost) ? ' (時間不足)' : ''}`,
+                type: 'draw_decline', // 或者使用新的類型如 'consolation_skip'
+                subtype: 'consolation_choice_skip',
+                detail: `安慰性階段放棄選擇卡片`,
                 timeChange: 0,
                 timeAfter: playerTimes[player],
                 round: round
             });
-            console.log(`玩家 ${player} 放棄/無法購買安慰性抽牌的 ${drawnCardInfo.name}。卡片 ${drawnCardId} 已被消耗。`);
+            renderTimeline(); // 更新時間軸顯示
+            continue; // 輪到下一位玩家
         }
-        updateTimeBar(player); // 即時更新該玩家時間條
-        renderTimeline(); // 即時更新時間軸
+
+        const chosenCardInfo = cardData[chosenCardId];
+
+        if (!chosenCardInfo) {
+            console.error(`安慰性購買錯誤：找不到所選卡片ID ${chosenCardId} 的資料！`);
+            // 此卡片ID來自 availableCards，理應存在。
+            // 若不存在，表示有更深層的資料完整性問題。
+            // 為安全起見，跳過此玩家本次的嘗試。
+            continue;
+        }
+        console.log(`玩家 ${player} 在安慰性階段選擇了 ${chosenCardInfo.name} (ID: ${chosenCardId}) 進行考慮。`);
+
+        const originalPrice = chosenCardInfo.price;
+        // 'consolation_draw' 作為 purchaseContext，讓技能效果可以正確作用
+        const actualCost = getAdjustedCardCost(player, originalPrice, 'consolation_draw');
+
+        const wantsToBuy = await promptConsolationPurchase(player, chosenCardInfo, actualCost);
+
+        if (wantsToBuy && playerTimes[player] >= actualCost) {
+            playerTimes[player] -= actualCost;
+            timeline[player].push({
+                type: 'draw_acquire', // 或者 'market_acquire' 如果更適合你的事件分類
+                subtype: 'consolation_purchase',
+                detail: `安慰性階段購買 ${chosenCardInfo.name} (原價 ${originalPrice}, 花費 ${actualCost}${actualCost < originalPrice ? ' [技能減免]' : ''})`,
+                timeChange: -actualCost,
+                timeAfter: playerTimes[player],
+                round: round
+            });
+            console.log(`玩家 ${player} 透過安慰性階段購買了 ${chosenCardInfo.name}。`);
+            // 只有在成功購買後，才將卡片從 availableCards 中移除
+            availableCards = availableCards.filter(id => id !== chosenCardId);
+            // 如果此安慰階段會影響主市場的顯示，則重新繪製市場。
+            // 目前假設在主市場設定階段之前不會影響，或主市場會重新繪製。
+            // if (typeof drawMarket === 'function') drawMarket(); // 範例：若 availableCards 被 drawMarket 直接使用，可能需要重繪
+
+        } else {
+            const reason = (wantsToBuy && playerTimes[player] < actualCost) ? ' (時間不足)' : ' (選擇放棄購買)';
+            timeline[player].push({
+                type: 'draw_decline', // 或者 'market_decline'
+                subtype: 'consolation_purchase_decline',
+                detail: `安慰性階段放棄/無法購買所選的 ${chosenCardInfo.name}${reason}`,
+                timeChange: 0,
+                timeAfter: playerTimes[player],
+                round: round
+            });
+            console.log(`玩家 ${player} 放棄/無法購買安慰性階段選擇的 ${chosenCardInfo.name}。卡片 ${chosenCardId} 返回市場。`);
+            // 若未購買，卡片不會從 availableCards 中移除
+        }
+        updateTimeBar(player); // 即時更新該玩家的時間條
+        renderTimeline();      // 即時更新時間軸
     }
-    console.log("安慰性抽牌階段結束。");
+    console.log("安慰性抽牌/購買階段結束。");
     updateAllTimeBars(); // 以防萬一，再次更新所有時間條
+    // 如果市場區域仍然可見且需要反映 availableCards 的變化，可能需要重繪市場。
+    // 這取決於你的遊戲流程 - 通常下一個階段會無論如何都重新繪製市場。
+    // if (document.getElementById('marketArea').offsetParent !== null && typeof drawMarket === 'function') {
+    //    console.log("安慰性階段結束後重新繪製市場。");
+    //    drawMarket();
+    // }
 }
-
-
-async function promptConsolationPurchase(player, cardInfo, actualCost) {
+async function promptConsolationCardChoice(player, cardsForChoice) {
     return new Promise(resolve => {
-        const oldWindow = document.querySelector('.consolation-purchase-window');
+        // 移除任何已存在的安慰性選擇視窗
+        const oldWindow = document.querySelector('.consolation-choice-window');
         if (oldWindow) oldWindow.remove();
 
+        if (cardsForChoice.length === 0) {
+            alert(`玩家 ${player} 無卡可供選擇進行安慰性購買。`);
+            resolve(null); // 沒有卡片可以選擇
+            return;
+        }
+
         const windowDiv = document.createElement('div');
-        // 建議為這個彈窗使用特定的class，或者確保 .bidding-window 樣式適用
-        windowDiv.className = 'bidding-window consolation-purchase-window';
+        windowDiv.className = 'bidding-window consolation-choice-window'; // 可以重用競標視窗的樣式
         const playerCharNameKey = playerCharacterSelections[player];
         const playerCharName = playerCharNameKey ? characterSettings[playerCharNameKey].name : '';
 
+        windowDiv.innerHTML = `
+            <h3>玩家 ${player} ${playerCharName ? `(${playerCharName})` : ''} - 選擇安慰卡</h3>
+            <p>請從下列市場卡片中選擇一張進行安慰性購買：</p>
+        `;
 
+        const cardListDiv = document.createElement('div');
+        cardListDiv.style.maxHeight = '300px'; // 防止列表過長
+        cardListDiv.style.overflowY = 'auto';  // 啟用垂直捲動
+        cardListDiv.style.marginBottom = '15px';
+
+        cardsForChoice.forEach(cardId => {
+            const cardInfo = cardData[cardId];
+            if (!cardInfo) {
+                console.error(`promptConsolationCardChoice: 找不到卡片ID ${cardId} 的資料！`);
+                return; // 如果找不到卡片資料，則跳過此卡片
+            }
+            const btn = document.createElement('button');
+            btn.textContent = `${cardInfo.name} (原價: ${cardInfo.price})`;
+            btn.style.display = 'block';    // 讓按鈕獨佔一行
+            btn.style.margin = '5px auto'; // 設定按鈕邊距
+            btn.onclick = () => {
+                windowDiv.remove();
+                resolve(cardId); // 回傳被選擇的卡片ID
+            };
+            cardListDiv.appendChild(btn);
+        });
+
+        windowDiv.appendChild(cardListDiv);
+
+        // 新增一個放棄選擇的按鈕，如果玩家不想選擇任何安慰卡
+        const passButton = document.createElement('button');
+        passButton.textContent = '放棄選擇';
+        passButton.style.marginTop = '10px';
+        passButton.onclick = () => {
+            windowDiv.remove();
+            resolve(null); // 玩家選擇放棄
+        };
+        windowDiv.appendChild(passButton);
+
+        document.body.appendChild(windowDiv);
+        windowDiv.focus(); // 讓彈出視窗獲得焦點
+    });
+}
+
+async function promptConsolationPurchase(player, cardInfo, actualCost) {
+
+    return new Promise(resolve => {
+        const oldWindow = document.querySelector('.consolation-purchase-window');
+        if (oldWindow) oldWindow.remove();
+        const windowDiv = document.createElement('div');
+        windowDiv.className = 'bidding-window consolation-purchase-window';
+        const playerCharNameKey = playerCharacterSelections[player];
+        const playerCharName = playerCharNameKey ? characterSettings[playerCharNameKey].name : '';
         windowDiv.innerHTML = `
             <h3>玩家 ${player} ${playerCharName ? `(${playerCharName})` : ''} - 安慰性抽牌</h3>
             <p>您抽到了：<strong>${cardInfo.name}</strong> (ID: ${cardInfo.id || currentBidding.cardId})</p> <p>效果：${cardInfo.effect || '無特殊效果描述'}</p> <p>原價: ${cardInfo.price}, 您的花費: <strong>${actualCost}</strong></p>
-            <p>您目前時間: ${playerTimes[player]}</p>
-        `;
+            <p>您目前時間: ${playerTimes[player]}</p>`;
 
         const buyButton = document.createElement('button');
         buyButton.textContent = `購買 (花費 ${actualCost})`;
@@ -972,7 +1043,6 @@ async function promptConsolationPurchase(player, cardInfo, actualCost) {
             windowDiv.remove();
             resolve(true);
         };
-
         const passButton = document.createElement('button');
         passButton.textContent = '放棄';
         passButton.onclick = () => {
@@ -985,7 +1055,6 @@ async function promptConsolationPurchase(player, cardInfo, actualCost) {
         buttonsContainer.appendChild(buyButton);
         buttonsContainer.appendChild(passButton);
         windowDiv.appendChild(buttonsContainer);
-
         document.body.appendChild(windowDiv);
         windowDiv.focus(); // 讓彈窗獲得焦點
     });
@@ -1251,7 +1320,6 @@ function resolveBidding() {
     };
 }
 
-
 function cancelBidding(fullCancel = false) {
     const biddingWindowDom = document.querySelector('.bidding-window');
     if (biddingWindowDom) biddingWindowDom.remove();
@@ -1269,13 +1337,11 @@ function cancelBidding(fullCancel = false) {
 
         document.getElementById('roundTitle').textContent = '第' + round + '回合';
         document.getElementById('nextRoundBtn').disabled = true;
-
         document.getElementById('marketSelection').style.display = 'none';
         document.getElementById('playerActions').style.display = 'block';
         document.getElementById('backToMarketSelectionBtn').style.display = 'inline-block';
 
-        marketStep(); // marketStep 會創建行動按鈕和 +/- 按鈕
-
+        marketStep();
         updateAllTimeBars();
         renderTimeline();
 
@@ -1305,7 +1371,6 @@ function cancelBidding(fullCancel = false) {
         resolvePromise: null
     };
 }
-
 
 // ========= UI 更新函式 =========
 function updateTimeBar(player) {
@@ -1367,7 +1432,7 @@ function renderTimeline() {
             segment.style.width = calculatedWidthPx + 'px';
             segment.style.height = EVENT_SEGMENT_HEIGHT;
 
-            let symbol = '?';
+            let symbol = '';
             if (e.type === 'rest') symbol = '休';
             else if (e.type === 'buy') symbol = '買';
             else if (e.type === 'buy_fail') symbol = 'X'; // 購買失敗符號
@@ -1380,7 +1445,6 @@ function renderTimeline() {
                 else symbol = '競';
             } else if (e.type === 'phase_tick') {
                 symbol = '●';
-                // segment.style.color = '#546E7A'; // phase_tick 顏色由CSS處理
             } else if (e.type === 'manual_adjust') {
                 symbol = e.subtype === 'plus' ? '➕' : '➖';
                 // 文字顏色由 CSS .event.manual_adjust 控制
