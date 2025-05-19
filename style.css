@@ -63,7 +63,6 @@ button.selected {
     white-space: pre-wrap;
 }
 
-
 #startButton {
     background-color: #f0f0f0; /* 初始灰色 */
     color: #888;
@@ -199,6 +198,10 @@ button.selected {
     line-height: 25px;
     font-weight: bold;
     transition: width 0.3s ease, background-color 0.3s ease;
+    white-space: nowrap;
+}
+.time-bar-inner.empty {
+    color: black;
 }
 
 /* === 時間軸 (Timeline) === */
@@ -228,7 +231,7 @@ button.selected {
 }
 
 .event {
-    min-width: 30px; 
+    min-width: 40px; 
     margin: 0 1px; 
     border-radius: 3px;
     position: relative; 
@@ -259,8 +262,8 @@ button.selected {
 .event.manual_adjust.minus { background-color: #ffebee; /* 手動減時 - 淡粉紅色 */ }
 .event.skill_effect { background-color: #673AB7; /* 深紫色 */ }
 .event.skill_effect.round_time_bonus { background-color: #7E57C2; /* 較淺的紫色 */ }
-.event.draw_acquire.consolation { background-color: #FF9800; /* 橘色 */ }
-.event.draw_decline.consolation { background-color: #FF9800; /* 橘色 */ }
+.event.draw_acquire.consolation_purchase { background-color: #FF9800; /* 橘色 */ }
+.event.draw_decline.consolation_purchase_decline { background-color: #FF9800; /* 橘色 */ }
 .event.bidding.win_skill { background-color: #FFC107; /* 與普通 win 類似，可稍作區別或共用 */ color: #333; }
 .event.bidding.lose_tie_skill { background-color: #A1887F; /* 棕灰色 */ }
 .event.bidding.tie_unresolved { background-color: #78909C; /* 藍灰色 */ }
