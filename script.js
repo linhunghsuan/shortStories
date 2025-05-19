@@ -38,7 +38,7 @@ const MAX_TIME = 12;                // 玩家最大時間上限
 const BASE_REST_RECOVERY_AMOUNT = 6; // 基礎休息恢復量 (未使用技能時)
 
 // 時間軸視覺化相關常數
-const TIME_UNIT_WIDTH = 10; // 時間軸上每個時間單位代表的寬度 (px)
+const TIME_UNIT_WIDTH = 20; // 時間軸上每個時間單位代表的寬度 (px)
 const MIN_EVENT_SEGMENT_WIDTH = TIME_UNIT_WIDTH; // 事件在時間軸上的最小寬度 (px)
 const EVENT_SEGMENT_HEIGHT = '25px'; // 事件在時間軸上的高度
 
@@ -61,10 +61,10 @@ async function initializeAppData() {
         if (!cardData || Object.keys(cardData).length === 0) throw new Error("卡片資料為空或格式不正確。");
         if (!characterSettings || Object.keys(characterSettings).length === 0) throw new Error("角色資料為空或格式不正確。");
 
-        characterNames = Object.keys(characterSettings); // 這些是角色設定檔中的 "1", "2", ...
-        availableCards = Object.keys(cardData).map(id => parseInt(id)); // 假設卡片ID是數字
+        characterNames = Object.keys(characterSettings);
+        availableCards = Object.keys(cardData).map(id => parseInt(id));
 
-        console.log(`資料載入: ${Object.keys(cardData).length} 張卡片，${characterNames.length} 種角色`);
+        console.log(`資料載入：${Object.keys(cardData).length}張卡片，${characterNames.length}種角色`);
 
         document.getElementById('player1').disabled = false;
         document.getElementById('player2').disabled = false;
@@ -72,29 +72,19 @@ async function initializeAppData() {
         document.getElementById('startButton').disabled = true;
 
     } catch (error) {
-        console.error("初始化錯誤:", error);
-        alert(`初始化錯誤：無法載入遊戲設定檔 (${error.message})。\n請檢查 console 的詳細錯誤訊息，並確認 JSON 檔案路徑及內容。\n遊戲無法開始。`);
+        console.error("初始化錯誤：", error);
+        alert(`初始錯誤：無法載入遊戲設定檔(${error.message})\n請檢查 console 的詳細錯誤訊息，並確認 JSON 檔案路徑及內容`);
     }
 }
 document.addEventListener('DOMContentLoaded', initializeAppData);
 
 // ========= 輔助函式 =========
-function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-}
-
 function determineMaxMarketSelectionCount() {
     let marketSize = selectedPlayerCount + 1;
     let skill8Active = players.some(p_id =>
         playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "EXTRA_MARKET_CARD"
     );
-    if (skill8Active) {
-        marketSize++;
-        console.log("市場調整: 技能「街頭故事李白」生效，市場卡片上限+1");
-    }
+    if (skill8Active) marketSize++;
     return Math.min(marketSize, availableCards.length);
 }
 
@@ -107,26 +97,21 @@ function getAdjustedCardCost(playerId, basePrice, purchaseContext) {
         // 技能1: 嘗試新奇事物的人 (通用減費)
         if (skillInfo.type === "REDUCE_COST_GENERAL") {
             finalPrice -= skillInfo.value;
-            console.log(`成本調整: 玩家 ${playerId} 技能 [${skillInfo.description}] 生效，費用 -${skillInfo.value}`);
+            //console.log(`玩家${playerId}技能：費用-${skillInfo.value}`);
         }
-        // 技能5: 堅定志向的人 (僅安慰性抽牌/購買時減費)
-        // 這裡的邏輯是，如果技能1已通用減費，技能5的條件可能需要更精確判斷是否疊加或獨立。
-        // 目前假設：如果角色有技能1，則其效果已包含安慰性抽牌。若角色只有技能5，則只在安慰性抽牌生效。
-        // 若一個角色理論上可能同時擁有多個減費技能（雖然目前說角色唯一），則需定義疊加規則。
-        // 鑑於角色唯一，一個玩家只會有一個主要技能。
+        // 技能5: 堅定志向的人 (僅抽牌購買時減費)
         else if (skillInfo.type === "REDUCE_COST_CONSOLATION_DRAW" && purchaseContext === 'consolation_draw') {
             finalPrice -= skillInfo.value;
-            console.log(`成本調整: 玩家 ${playerId} 技能 [${skillInfo.description}] 生效 (安慰性抽牌)，費用 -${skillInfo.value}`);
+            //console.log(`玩家${playerId}技能：費用-${skillInfo.value}`);
         }
     }
     return Math.max(0, finalPrice); // 確保價格不為負
 }
 
-
 // ========= 設定階段函式 =========
 function selectPlayerCountUI(count) {
     if (!characterSettings || characterNames.length === 0) {
-        alert("角色資料仍在載入中或載入失敗，請稍候。");
+        alert("初始錯誤：角色資料仍在載入中或載入失敗，請稍候。");
         return;
     }
     const playerOptionsButtons = document.querySelectorAll('.player-options button');
@@ -154,8 +139,8 @@ function selectPlayerCountUI(count) {
         clickedButton.classList.add('selected');
         displayCharacterSelection(count); // 顯示對應人數的角色選擇器
         document.getElementById('confirmCharactersButton').disabled = false;
-        document.getElementById('confirmCharactersButton').style.backgroundColor = ''; // 恢復預設綠色
-        document.getElementById('startButton').disabled = true; // 需先確認角色才能開始
+        document.getElementById('confirmCharactersButton').classList.remove('selected');
+        document.getElementById('startButton').disabled = true;
     }
 }
 
@@ -228,16 +213,22 @@ function confirmCharacterSelections() {
         document.getElementById('startButton').disabled = false;
         errorMsgElement.textContent = '角色確認: 所有玩家選擇完畢！可開始遊戲。';
         errorMsgElement.style.color = 'green';
-        document.getElementById('confirmCharactersButton').style.backgroundColor = '#007bff'; // 選中後的藍色
+        document.getElementById('confirmCharactersButton').classList.add('selected');
+        for (let i = 0; i < selectedPlayerCount; i++) {
+            const playerID = PLAYER_ID_MAP[i];
+            const selectElement = document.getElementById(`characterSelect${playerID}`);
+            selectElement.disabled = true
+        }
     } else {
         document.getElementById('startButton').disabled = true;
         errorMsgElement.style.color = 'red';
+        document.getElementById('confirmCharactersButton').classList.remove('selected');
     }
 }
 
 function startGame() {
     if (Object.keys(playerCharacterSelections).length !== selectedPlayerCount || selectedPlayerCount === 0) {
-        alert("請先完成人數選擇和所有玩家的角色確認。");
+        alert("初始錯誤：請先完成人數選擇和所有玩家的角色確認。");
         return;
     }
 
@@ -271,10 +262,6 @@ function startGame() {
         updateTimeBar(p_id);
     });
 
-    // 洗牌 (availableCards)
-    shuffleArray(availableCards);
-    console.log("遊戲開始: 可用卡牌已洗牌。");
-
     // 切換UI顯示
     document.querySelector('.setup').style.display = 'none';
     document.querySelector('.game-area').style.display = 'block';
@@ -299,30 +286,26 @@ function drawMarket() {
     document.getElementById('marketSelectionTitle').textContent = `選擇本回合的 ${maxSelection} 張市場卡片`;
 
     if (availableCards.length === 0) {
-        marketArea.innerHTML = '<p>市場提示: 所有卡片已被使用完畢！</p>';
+        marketArea.innerHTML = '<p>市場提示: 所有卡片已被使用完畢</p>';
         document.getElementById('confirmMarket').disabled = true;
-        // 這裡可能也意味著遊戲結束，可以在 nextRound 中更全面地判斷
         return;
     }
     if (maxSelection === 0 && availableCards.length > 0) {
-         marketArea.innerHTML = `<p>市場提示: 本回合無足夠卡片形成市場 (需要至少 ${selectedPlayerCount + 1} 張，當前剩餘 ${availableCards.length})。</p>`;
+         marketArea.innerHTML = `<p>市場提示: 本回合無足夠卡片形成市場</p>`;
          document.getElementById('confirmMarket').disabled = true; // 若無法選出足夠卡片，也禁用確認
-         // 這種情況可能也需要特殊處理，例如直接進入下一回合或結束遊戲
          return;
     }
-
 
     // 顯示所有 availableCards 供主持人選擇
     availableCards.forEach(cardId => {
         const cardInfo = cardData[cardId];
         if (!cardInfo) {
-            console.error(`市場繪製錯誤: 找不到卡片ID ${cardId} 的資料！`);
+            console.error(`市場錯誤：找不到卡片ID${cardId}的資料`);
             return;
         }
         const btn = document.createElement('button');
-        btn.textContent = `${cardInfo.name} (需時: ${cardInfo.price})`;
+        btn.textContent = `${cardInfo.name} (${cardInfo.price})`;
         btn.dataset.cardId = cardId; // 儲存卡片ID，方便操作
-        btn.style.background = '#4CAF50'; // 預設未選中樣式 (綠色)
         btn.onclick = () => toggleMarketCard(cardId, btn);
         marketArea.appendChild(btn);
     });
@@ -335,16 +318,14 @@ function toggleMarketCard(cardId, btn) {
 
     if (isSelected) {
         selectedMarket = selectedMarket.filter(c => c !== cardId);
-        btn.classList.remove('selected'); // 使用CSS class控制選中樣式
-        btn.style.background = '#4CAF50'; // 恢復預設
+        btn.classList.remove('selected');
     } else {
         if (selectedMarket.length >= maxSelection) {
-            alert(`市場選擇上限: 最多只能選擇 ${maxSelection} 張市場卡片。`);
+            alert(`市場上限：最多只能選擇${maxSelection} 張市場卡片`);
             return;
         }
         selectedMarket.push(cardId);
         btn.classList.add('selected');
-        btn.style.background = '#007bff'; // 選中樣式 (藍色)
     }
     updateConfirmMarketButtonState();
 }
@@ -360,21 +341,18 @@ function updateConfirmMarketButtonState() {
 }
 
 function resetMarketCardSelection() {
-    console.log("市場操作: 重設選擇");
     selectedMarket = [];
-    // drawMarket 會重新渲染按鈕並清除 .selected class (因為按鈕是新建的)
-    // 它也會調用 updateConfirmMarketButtonState
     drawMarket();
 }
 
 function confirmMarket() {
     const maxSelection = determineMaxMarketSelectionCount();
     if (selectedMarket.length !== maxSelection) {
-        alert(`市場確認錯誤: 請選擇剛好 ${maxSelection} 張市場卡片！`);
+        alert(`市場錯誤：請選擇${maxSelection}張市場卡片`);
         return;
     }
     marketCards = [...selectedMarket]; // 將選中的卡片設為本回合的市場卡片
-    console.log(`市場操作: 確認市場卡片 ${marketCards.join(', ')}`);
+    console.log(`市場階段：確認市場卡片${marketCards.join(', ')}`);
 
     document.getElementById('marketSelection').style.display = 'none';
     document.getElementById('playerActions').style.display = 'block';
@@ -390,7 +368,7 @@ function confirmMarket() {
 }
 
 function backToMarketSelection() {
-    console.log("返回操作: 返回選擇市場卡片");
+    console.log("市場操作: 重新選擇");
     // 重設玩家行動相關狀態
     playerActions = {};
     players.forEach(p => {
@@ -401,7 +379,6 @@ function backToMarketSelection() {
         playerTurnChoices[p] = { count: 0, actions: [], firstChoiceWasCard: false }; // 重設技能6狀態
     });
     marketCards = []; // 清空已確認的市場卡片
-    // selectedMarket 已經在 drawMarket 開始時清空
 
     document.getElementById('playerActions').style.display = 'none';
     document.getElementById('marketSelection').style.display = 'block';
@@ -413,7 +390,7 @@ function backToMarketSelection() {
 
 // ========= 玩家行動函式 =========
 function marketStep() {
-    console.log("行動階段: 開始");
+    console.log("行動階段：開始");
     players.forEach(p_id => {
         const actionButtonsArea = document.getElementById('actions' + p_id);
         actionButtonsArea.innerHTML = ''; // 清空舊按鈕
@@ -429,20 +406,6 @@ function marketStep() {
             });
         }
 
-        const skillInfo = playerCharacterSkills[p_id];
-        const isTwoCardChooser = skillInfo && skillInfo.type === "TWO_CARD_CHOICES";
-
-        if (isTwoCardChooser) {
-            actionButtonsArea.dataset.player = p_id; // 標記父容器
-            // 提示該玩家可以選兩張
-            const skillHint = document.createElement('p');
-            skillHint.textContent = `提示: ${characterSettings[playerCharacterSelections[p_id]].name} 本回合可選擇至多兩張不同故事卡。`;
-            skillHint.style.fontSize = '0.9em';
-            skillHint.style.color = '#555';
-            actionButtonsArea.appendChild(skillHint);
-        }
-
-
         if (marketCards.length === 0 || !canAffordAnyCard) {
             // 市場無卡或一張都買不起，只能休息
             createActionButton(p_id, '休息', 0);
@@ -450,7 +413,7 @@ function marketStep() {
             marketCards.forEach((cardId, index) => {
                 const cardInfo = cardData[cardId];
                 if (!cardInfo) {
-                    console.error(`行動階段錯誤: 找不到卡片ID ${cardId} 的資料！`);
+                    console.error(`行動錯誤：找不到卡片ID ${cardId}的資料`);
                     return;
                 }
                 // 預估直接購買成本 (僅供顯示，實際購買時會再計算)
@@ -459,7 +422,7 @@ function marketStep() {
                     createActionButton(p_id, cardId, index + 1);
                 } else {
                     const btn = document.createElement('button');
-                    btn.textContent = `待標商品${index + 1} (${cardInfo.name} - 需時: ${cardInfo.price}, 時間不足)`;
+                    btn.textContent = `待標商品${index + 1}\n${cardInfo.name}\n資源不足：價${cardInfo.price}`;
                     btn.disabled = true;
                     actionButtonsArea.appendChild(btn);
                 }
@@ -480,10 +443,10 @@ function marketStep() {
         manualControlsContainer.appendChild(minusBtn);
         manualControlsContainer.style.display = 'flex';
     });
-    checkAllActions(); // 檢查初始狀態是否允許進入下一回合 (不太可能)
+    checkAllActions();
 }
 
-function createActionButton(playerId, choice, displayIndexOrZeroForRest, isSecondChoiceContext = false) {
+function createActionButton(playerId, choice, displayIndexOrZeroForRest) {
     const actionButtonsArea = document.getElementById('actions' + playerId);
     const btn = document.createElement('button');
     btn.dataset.choice = choice; // 儲存選擇值 (cardId 或 '休息')
@@ -493,8 +456,8 @@ function createActionButton(playerId, choice, displayIndexOrZeroForRest, isSecon
     } else { // choice is a cardId
         const cardInfo = cardData[choice];
         if (!cardInfo) {
-            console.error(`創建按鈕錯誤: 找不到卡片ID ${choice} 的資料！`);
-            btn.textContent = `錯誤卡片${displayIndexOrZeroForRest}`;
+            console.error(`按鈕錯誤：找不到卡片ID ${choice}的資料`);
+            btn.textContent = `錯誤卡片`;
             btn.disabled = true;
         } else {
             // 顯示預估成本

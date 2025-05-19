@@ -58,16 +58,11 @@ button.selected {
 }
 
 /* 設定階段特定按鈕 */
-.player-options button, 
-#confirmCharactersButton { /* 確認角色按鈕也用此風格 */
-    background-color: #5cb85c; 
-    border-color: #4cae4c;
+.actions button
+{ 
+    white-space: pre-wrap;
 }
-.player-options button.selected, 
-#confirmCharactersButton.selected { 
-    background-color: #007bff;
-    border-color: #0056b3;
-}
+
 
 #startButton {
     background-color: #f0f0f0; /* 初始灰色 */
