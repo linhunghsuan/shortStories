@@ -36,8 +36,8 @@ let currentBidding = { // 當前競標狀態
     step: 0,
     resolvePromise: null,
     // 以下兩個欄位由 resolveBidding 填充，並由 nextRound 檢查
-    needsConsolationDraw: false,     // 標記競標結果是否需要安慰性抽牌
-    tiedPlayersForConsolation: []  // 參與安慰性抽牌的玩家
+    needsConsolationDraw: false,     // 標記競標結果是否需要抽牌
+    tiedPlayersForConsolation: []  // 參與抽牌的玩家
 };
 let players = []; // 當前參與遊戲的玩家ID列表 (['A'], ['A', 'B'], or ['A', 'B', 'C'])
 const PLAYER_ID_MAP = ['A', 'B', 'C']; // 玩家ID映射
@@ -89,7 +89,7 @@ async function initializeAppData() {
         characterNames = Object.keys(characterSettings);
         availableCards = Object.keys(cardData).map(id => parseInt(id));
 
-        console.log(`資料載入: ${Object.keys(cardData).length}張卡片，${characterNames.length}種角色`);
+        console.log(`回合準備: ${Object.keys(cardData).length}張卡片，${characterNames.length}種角色`);
 
         document.getElementById('player1').disabled = false;
         document.getElementById('player2').disabled = false;
@@ -368,11 +368,11 @@ function resetMarketCardSelection() {
 function confirmMarket() {
     const maxSelection = determineMaxMarketSelectionCount();
     if (selectedMarket.length !== maxSelection) {
-        alert(`市場確認錯誤: 請選擇剛好 ${maxSelection} 張`);
+        alert(`市場錯誤: 請選擇剛好 ${maxSelection} 張`);
         return;
     }
     marketCards = [...selectedMarket];
-    console.log(`市場確認: 本回合市場卡為 ${marketCards.map(id => cardData[id].name).join(', ')}`);
+    console.log(`市場處理: 本回合市場卡為 ${marketCards.map(id => cardData[id].name).join(', ')}`);
 
     document.getElementById('marketSelection').style.display = 'none';
     document.getElementById('playerActions').style.display = 'block';
@@ -665,7 +665,7 @@ function adjustPlayerTimeManually(playerId, amount) {
 
     if (actualChange !== 0) {
         playerTimes[playerId] = newTime;
-        const detailMsg = `手動調時:${actualChange > 0 ? '+' : ''}${actualChange}時間 (新${newTime})`;
+        const detailMsg = `手動調時:${actualChange > 0 ? '+' : ''}${actualChange}時 (餘${newTime})`;
         timeline[playerId].push({
             type: 'manual_adjust', subtype: actualChange > 0 ? 'plus' : 'minus',
             detail: detailMsg, timeChange: actualChange, timeAfter: playerTimes[playerId], round: round
@@ -719,22 +719,22 @@ async function nextRound() {
                 const timeBeforeRest = playerTimes[p];
                 let recoveryAmount = BASE_REST_RECOVERY_AMOUNT;
                 const skillInfo = playerCharacterSkills[p];
-                let skillOwnerNameForRest = '';
+                
                 if (skillInfo && skillInfo.type === "ENHANCED_REST") {
                     recoveryAmount = skillInfo.value;
-                    skillOwnerNameForRest = characterSettings[playerCharacterSelections[p]].name;
+                    
                 }
                 playerTimes[p] = Math.min(playerTimes[p] + recoveryAmount, MAX_TIME);
                 const actualRecovery = playerTimes[p] - timeBeforeRest;
-                const skillText = (recoveryAmount !== BASE_REST_RECOVERY_AMOUNT && skillInfo) ? ` (技能:${skillOwnerNameForRest})` : '';
+                const skillText = (recoveryAmount !== BASE_REST_RECOVERY_AMOUNT && skillInfo) ? `技能休息: ` : '休息回復';
 
                 if (actualRecovery >= 0) { // 即使恢復0也記錄
-                    const detailMsg = `休息回復: +${actualRecovery} 時間${skillText}`;
+                    const detailMsg = `${skillText}+${actualRecovery}時 (餘${playerTimes[p]})`;
                     timeline[p].push({
                         type: 'rest', subtype: 'recover', detail: detailMsg,
                         timeChange: actualRecovery, timeAfter: playerTimes[p], round: round
                     });
-                    console.log(`休息回復: ${p} ${detailMsg}`);
+                    console.log(`${skillText}${p}+${actualRecovery}時 (餘${playerTimes[p]})`);
                 }
             } else if (action) { // action is a cardId
                 choiceCount[action] = (choiceCount[action] || []).concat(p);
@@ -775,7 +775,6 @@ async function nextRound() {
                 const indexInAvailable = availableCards.indexOf(cardId);
                 if (indexInAvailable > -1) {
                     availableCards.splice(indexInAvailable, 1);
-                    console.log(`卡片移除: ${currentCardInfo.name} 已被購買`);
                 }
             } else {
                 const failDetail = `購買失敗: ${currentCardInfo.name} (需${actualCost},餘${playerTimes[p]})`;
@@ -796,7 +795,6 @@ async function nextRound() {
                 const indexInAvailable = availableCards.indexOf(cardId);
                 if (indexInAvailable > -1) {
                     availableCards.splice(indexInAvailable, 1);
-                    console.log(`卡片移除: ${currentCardInfo.name} 已被 ${biddingResultOutcome.winner} 競標獲得`);
                 }
             }
             if (biddingResultOutcome.needsConsolationDraw && biddingResultOutcome.tiedPlayersForConsolation.length > 0) {
@@ -812,12 +810,11 @@ async function nextRound() {
 
     const initialMarketCardsThisRound = gameStateBeforeNextRound.marketCards;
     if (initialMarketCardsThisRound && initialMarketCardsThisRound.length > 0) {
-        console.log(`回合結束: 清理市場卡 ${initialMarketCardsThisRound.map(id=>cardData[id]?.name || id).join(', ')}`);
+        console.log(`回合結束: 清理市場卡`);
         initialMarketCardsThisRound.forEach(cardIdToRemove => {
             const indexInAvailable = availableCards.indexOf(cardIdToRemove);
             if (indexInAvailable > -1) {
                 availableCards.splice(indexInAvailable, 1);
-                console.log(`市場棄牌: ${cardData[cardIdToRemove]?.name} 未售出`);
             }
         });
     }
@@ -855,7 +852,7 @@ async function nextRound() {
     updateAllTimeBars();
     renderTimeline();
     gameStateBeforeNextRound = null;
-    console.log(`回合結束: 前進至第 ${round} 回合。可用卡牌剩餘 ${availableCards.length} 張`);
+    console.log(`回合準備: 前進至第 ${round} 回合。可用卡牌剩餘 ${availableCards.length} 張`);
 
     const marketAreaContainer = document.getElementById('marketArea');
     drawMarket();
@@ -883,7 +880,7 @@ async function performBiddingProcess(cardId, bidders) {
             cardId: cardId, bidders: [...bidders], bids: [], step: 0, resolvePromise: resolve,
             needsConsolationDraw: false, tiedPlayersForConsolation: []
         };
-        console.log(`競標流程: 卡片 ${cardData[cardId]?.name} 開始 (參與者: ${bidders.join(', ')})`);
+        console.log(`競標階段: 開始 ${cardData[cardId]?.name} (參與者: ${bidders.join(', ')})`);
         promptNextBidder();
     });
 }
@@ -1046,7 +1043,7 @@ function resolveBidding() {
             biddingOutcome.bidResolvedWithoutConsolation = true;
             biddingOutcome.winner = winner;
         } else { // 平手
-            console.log(`競標事件: ${cardInfo.name} 平手 (最高 ${maxBidValue}), 參與者: ${potentialWinnerIds.join(', ')}`);
+            console.log(`競標結束: ${cardInfo.name} 平手 (最高 ${maxBidValue}), 參與者: ${potentialWinnerIds.join(', ')}`);
             let skill4Winner = null;
             const playersWithSkill4InTie = potentialWinnerIds.filter(p_id =>
                 playerCharacterSkills[p_id] && playerCharacterSkills[p_id].type === "WIN_BID_TIE"
@@ -1070,7 +1067,7 @@ function resolveBidding() {
                     type: 'bidding', subtype: 'win_skill', detail: skillWinDetailMsg,
                     timeChange: -actualCost, timeAfter: playerTimes[skill4Winner], round: currentRoundForEvent
                 });
-                console.log(`競標事件: ${skillWinDetailMsg.replace('技能勝出: ', `玩家 ${skill4Winner} `)}`);
+                console.log(`競標結束: ${skillWinDetailMsg.replace('技能勝出: ', `玩家 ${skill4Winner} `)}`);
 
                 relevantBidsForThisCard.forEach(({ player: p, bid: bVal }) => {
                     if (p !== skill4Winner) {
@@ -1085,7 +1082,7 @@ function resolveBidding() {
                 });
                 biddingOutcome.bidResolvedWithoutConsolation = true;
                 biddingOutcome.winner = skill4Winner;
-            } else { // 無技能解決的平手 -> 流標，觸發安慰性抽牌
+            } else { // 無技能解決的平手 -> 流標，觸發抽牌
                 const tieDetailMsg = `平局流標: ${cardInfo.name} (出價 ${maxBidValue})`;
                 //console.log(`競標事件: ${tieDetailMsg}，準備抽牌階段。`);
                 potentialWinnerIds.forEach(p_id => {
@@ -1141,20 +1138,19 @@ function cancelBidding(fullCancel = false) {
     if (fullCancel) gameStateBeforeNextRound = null; // 狀態已使用或回溯，清除
 }
 
-// ========= 安慰性抽牌/購買階段 =========
+// ========= 抽牌/購買階段 =========
 async function startConsolationDrawPhase(tiedPlayersList) {
     console.log(`抽牌階段: 開始 (參與者: ${tiedPlayersList.join(', ')})`);
     const sortedTiedPlayers = tiedPlayersList.sort((a, b) => PLAYER_ID_MAP.indexOf(a) - PLAYER_ID_MAP.indexOf(b));
 
-    // 1. 創建本輪安慰性抽牌的專用可選卡池 (排除本回合已在市場上出現過的卡片)
+    // 1. 創建本輪抽牌的專用可選卡池 (排除本回合已在市場上出現過的卡片)
     let consolationSelectableCards = availableCards.filter(
         cardId => !(gameStateBeforeNextRound.marketCards.includes(cardId))
     );
 
     for (const player of sortedTiedPlayers) {
         if (consolationSelectableCards.length === 0) {
-            const noCardDetail = `安慰選擇: 無卡可選`; // 新格式
-            console.log(`抽牌階段: ${noCardDetail.replace('抽牌選擇: ', `玩家 ${player} `)} 可選池已空`);
+            console.log(`抽牌結束: 無卡可選，可選池已空`);
             timeline[player].push({
                 type: 'phase_info', subtype: 'consolation_no_cards', // 使用 phase_info 表示一個通知性事件
                 detail: noCardDetail,
@@ -1168,14 +1164,14 @@ async function startConsolationDrawPhase(tiedPlayersList) {
             // update2: 由於 consolationSelectableCards 在迴圈內被修改，所以每次都要檢查。
             // 如果第一個玩家抽完後池子空了，那第二個玩家就直接進入這個if。
         } else {
-            console.log(`抽牌階段: 輪到玩家 ${player} 選擇`);
+            console.log(`抽牌提示: 輪到玩家 ${player} 選擇`);
             // 2. 玩家從過濾後的專用池中選擇一張
             // 傳遞 consolationSelectableCards 的副本，以防 promptConsolationCardChoice 意外修改原陣列
             const chosenCardId = await promptConsolationCardChoice(player, [...consolationSelectableCards]);
 
             if (!chosenCardId) {
+                console.log(`抽牌處理: 玩家 ${player} 放棄抽牌`);
                 const skipDetail = `抽牌選擇: 放棄`; // 新格式
-                console.log(`抽牌階段: ${skipDetail.replace('放棄抽牌: ', `玩家 ${player} `)}`);
                 timeline[player].push({
                     type: 'draw_decline', subtype: 'consolation_choice_skip', detail: skipDetail,
                     timeChange: 0, timeAfter: playerTimes[player], round: round
@@ -1184,13 +1180,12 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                 // consolationSelectableCards 和 availableCards 在此情況下不變
             } else {
                 // 3. 一旦卡片被選中（即使還未決定購買），就從各個相關列表中移除
-                // a. 從本輪安慰性抽牌的後續選項中移除 (確保其他平手玩家不能再選此卡)
+                // a. 從本輪抽牌的後續選項中移除 (確保其他平手玩家不能再選此卡)
                 consolationSelectableCards = consolationSelectableCards.filter(id => id !== chosenCardId);
                 // b. 從全域的 availableCards 中移除 (代表該卡片已被"揭示/消耗"，不論是否購買)
                 const indexInGlobalAvailable = availableCards.indexOf(chosenCardId);
                 if (indexInGlobalAvailable > -1) {
                     availableCards.splice(indexInGlobalAvailable, 1);
-                    console.log(`抽牌階段: 卡片 ${chosenCardId} (${cardData[chosenCardId]?.name}) 被 ${player} 選中考慮`);
                 } else {
                     // 理論上不應發生，因為 consolationSelectableCards 是 availableCards 的子集
                     console.warn(`安慰階段警告: 卡片 ${chosenCardId} 被選中，但未在主牌庫找到？！`);
@@ -1220,7 +1215,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                         type: 'draw_acquire', subtype: 'consolation_purchase', detail: detailMsg,
                         timeChange: -actualCost, timeAfter: playerTimes[player], round: round
                     });
-                    console.log(`抽牌階段: ${detailMsg.replace('購買獲得: ', `玩家 ${player} `)}`);
+                    console.log(`抽牌處理: ${player} 購買獲得 ${chosenCardInfo.name} (原${originalPrice},實${actualCost}${skillText})`);
                     // 卡片已在選中考慮時從 availableCards 移除
                 } else {
                     const reason = (wantsToBuy && playerTimes[player] < actualCost) ? '時間不足' : '放棄購買';
@@ -1229,8 +1224,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                         type: 'draw_decline', subtype: 'consolation_purchase_decline', detail: detailMsg,
                         timeChange: 0, timeAfter: playerTimes[player], round: round
                     });
-                    console.log(`抽牌階段: ${detailMsg.replace('放棄抽牌: ', `玩家 ${player} `)}`);
-                    // 卡片已在選中考慮時從 availableCards 移除，所以這裡不需額外處理 "返回市場"
+                    console.log(`抽牌處理: ${player} 放棄抽牌`);
                 }
             }
         }
@@ -1238,7 +1232,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
     }
 }
 
-async function promptConsolationCardChoice(player, cardsForChoice) { // cardsForChoice 是已過濾的安慰性可選牌池
+async function promptConsolationCardChoice(player, cardsForChoice) { // cardsForChoice 是已過濾的可選牌池
     return new Promise(resolve => {
         const oldWindow = document.querySelector('.consolation-choice-window');
         if (oldWindow) oldWindow.remove();
@@ -1299,7 +1293,7 @@ async function promptConsolationPurchase(player, cardInfoToPurchase, actualCost)
 
 
         windowDiv.innerHTML = `
-            <h3>玩家 ${player} ${charNameForTitle} - 安慰性購買</h3>
+            <h3>玩家 ${player} ${charNameForTitle} - 購買</h3>
             <p style="font-weight:bold; font-size: 1.1em;">您選擇了: ${displayCardInfo.name} ${displayCardInfo.id ? `(ID: ${displayCardInfo.id})`: ''}</p>
             <p><em>效果: ${displayCardInfo.effect || '無特殊效果描述'}</em></p>
             <p>原價: ${displayCardInfo.price}, 您的花費: <strong style="color: #d32f2f;">${actualCost}</strong></p>
@@ -1409,8 +1403,8 @@ function renderTimeline() {
                 else symbol = '●'; // 其他 phase_tick
             } else if (type === 'phase_info') symbol = 'i'; // 資訊性事件
             else if (type === 'skill_effect') symbol = '技';
-            else if (type === 'draw_acquire') symbol = '抽✓'; // 安慰性抽牌獲得
-            else if (type === 'draw_decline') symbol = '抽X'; // 安慰性抽牌放棄/失敗
+            else if (type === 'draw_acquire') symbol = '抽✓'; // 抽牌獲得
+            else if (type === 'draw_decline') symbol = '抽X'; // 抽牌放棄/失敗
             else if (type === 'manual_adjust') {
                 symbol = subtype === 'plus' ? '➕' : '➖';
             } else if (type === 'error_event') {
