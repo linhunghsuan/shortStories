@@ -128,7 +128,7 @@ function getAdjustedCardCost(playerId, basePrice, purchaseContext) {
     }
     const adjustedPrice = Math.max(0, finalPrice);
     if (skillAppliedDescription && basePrice !== adjustedPrice) {
-        console.info(`成本調整: ${skillAppliedDescription} 卡片原價 ${basePrice}，調整後 ${adjustedPrice}。`);
+        //console.info(`成本調整: ${skillAppliedDescription} 卡片原價 ${basePrice}，調整後 ${adjustedPrice}。`);
     }
     return adjustedPrice;
 }
@@ -154,7 +154,7 @@ function selectPlayerCountUI(count) {
         });
         document.getElementById('confirmCharactersButton').disabled = true;
         document.getElementById('startButton').disabled = true;
-        console.info(`遊戲設定: 操作 - 取消選擇玩家人數。`);
+        //console.info(`遊戲設定: 操作 - 取消選擇玩家人數。`);
     } else {
         selectedPlayerCount = count;
         playerCharacterSelections = {};
@@ -167,7 +167,7 @@ function selectPlayerCountUI(count) {
         document.getElementById('confirmCharactersButton').disabled = false;
         document.getElementById('confirmCharactersButton').classList.remove('selected'); // 確保確認按鈕不是已選中狀態
         document.getElementById('startButton').disabled = true;
-        console.info(`遊戲設定: 操作 - 選擇玩家人數為 ${count} 人。`);
+        //console.info(`遊戲設定: 操作 - 選擇玩家人數為 ${count} 人。`);
     }
 }
 
@@ -251,7 +251,7 @@ function confirmCharacterSelections() {
         Object.entries(playerCharacterSelections).forEach(([p, charKey]) => {
             selectionsForLog[p] = characterSettings[charKey]?.name || charKey;
         });
-        console.info(`遊戲設定: 角色已確認`);
+        //console.info(`遊戲設定: 角色已確認`);
     } else {
         document.getElementById('startButton').disabled = true;
         errorMsgElement.style.color = 'red'; // Keep error color red
@@ -271,7 +271,7 @@ function startGame() {
     timeline = {};
 
     console.info(`====== 遊戲開始 (回合 1) ======`);
-    console.info(`遊戲設定: 玩家人數 ${selectedPlayerCount}`);
+    //console.info(`遊戲設定: 玩家人數 ${selectedPlayerCount}`);
 
     PLAYER_ID_MAP.forEach(pid_map => {
         const playerElement = document.getElementById('player' + pid_map);
@@ -298,7 +298,7 @@ function startGame() {
         updateTimeBar(p_id);
     });
     
-    console.info(`遊戲流程: 初始可用卡牌 ${availableCards.length} 張。`);
+    //console.info(`遊戲流程: 初始可用卡牌 ${availableCards.length} 張。`);
 
     document.querySelector('.setup').style.display = 'none';
     document.querySelector('.game-area').style.display = 'block';
@@ -321,7 +321,7 @@ function drawMarket() {
 
     const maxSelection = determineMaxMarketSelectionCount();
     document.getElementById('marketSelectionTitle').textContent = `市場選卡: 請選擇 ${maxSelection} 張`;
-    console.info(`市場選卡階段: 主持人需選擇 ${maxSelection} 張卡片作為本回合市場商品 (從 ${availableCards.length} 張剩餘卡片中)。`);
+    //console.info(`市場選卡階段: 主持人需選擇 ${maxSelection} 張卡片作為本回合市場商品 (從 ${availableCards.length} 張剩餘卡片中)。`);
 
     if (availableCards.length === 0) {
         marketArea.innerHTML = '<p class="market-status-text">市場提示: 所有卡片已用盡！</p>';
@@ -356,7 +356,7 @@ function toggleMarketCard(cardId, btn) {
     if (isSelected) {
         selectedMarket = selectedMarket.filter(c => c !== cardId);
         btn.classList.remove('selected');
-        console.info(`市場選卡: 操作 - 主持人取消選擇卡片 [${cardNameForLog}]。`);
+        //console.info(`市場選卡: 操作 - 主持人取消選擇卡片 [${cardNameForLog}]。`);
     } else {
         if (selectedMarket.length >= maxSelection) {
             alert(`市場選卡上限: 最多只能選擇 ${maxSelection} 張卡片。`);
@@ -364,7 +364,7 @@ function toggleMarketCard(cardId, btn) {
         }
         selectedMarket.push(cardId);
         btn.classList.add('selected');
-        console.info(`市場選卡: 操作 - 主持人選擇卡片 [${cardNameForLog}]。`);
+        //console.info(`市場選卡: 操作 - 主持人選擇卡片 [${cardNameForLog}]。`);
     }
     updateConfirmMarketButtonState();
 }
@@ -380,7 +380,7 @@ function updateConfirmMarketButtonState() {
 }
 
 function resetMarketCardSelection() {
-    console.info("市場選卡: 操作 - 主持人重設所有選擇。");
+    //console.info("市場選卡: 操作 - 主持人重設所有選擇。");
     selectedMarket = [];
     drawMarket();
 }
@@ -407,7 +407,7 @@ function confirmMarket() {
 }
 
 function backToMarketSelection() {
-    console.info("遊戲流程: 操作 - 主持人返回市場選卡階段 (本回合玩家行動將重置)。");
+    //console.info("遊戲流程: 操作 - 主持人返回市場選卡階段 (本回合玩家行動將重置)。");
     players.forEach(p_id => {
         playerActions[p_id] = null;
         playerTurnChoices[p_id] = { actions: [], firstChoiceMade: false, secondChoiceUiActive: false };
@@ -632,10 +632,10 @@ function selectAction(player, choice, clickedButton) {
     } else { // 標準玩家
         if (playerActions[player] === choice) { // 取消選擇
             playerActions[player] = null;
-            console.info(`行動選擇: 玩家 [${player}] 取消選擇 [${choice === '休息' ? '休息' : (cardData[choice]?.name || choice) }]`);
+            //console.info(`行動選擇: 玩家 [${player}] 取消選擇 [${choice === '休息' ? '休息' : (cardData[choice]?.name || choice) }]`);
         } else { // 選擇新的
             playerActions[player] = choice;
-            console.info(`行動選擇: 玩家 [${player}] 確認選擇 [${choice === '休息' ? '休息' : (cardData[choice]?.name || choice) }]`);
+            //console.info(`行動選擇: 玩家 [${player}] 確認選擇 [${choice === '休息' ? '休息' : (cardData[choice]?.name || choice) }]`);
         }
         renderPlayerActionButtons(player);
         checkAllActions();
@@ -646,12 +646,12 @@ function checkAllActions() {
     const allPlayersActed = players.every(p_id => playerActions[p_id] !== null && playerActions[p_id] !== undefined);
     document.getElementById('nextRoundBtn').disabled = !allPlayersActed;
     if (allPlayersActed) {
-        console.info("行動選擇階段: 所有玩家已完成行動選擇。可以進入下一回合。");
+        //console.info("行動選擇階段: 所有玩家已完成行動選擇。可以進入下一回合。");
     }
 }
 
 function refreshPlayerActionButtons(playerId) {
-    console.info(`行動刷新: 玩家 [${playerId}] 因時間調整，行動已重置。`);
+    //console.info(`行動刷新: 玩家 [${playerId}] 因時間調整，行動已重置。`);
     playerActions[playerId] = null;
     if (playerCharacterSkills[playerId] && playerCharacterSkills[playerId].type === "TWO_CARD_CHOICES") {
         playerTurnChoices[playerId] = { actions: [], firstChoiceMade: false, secondChoiceUiActive: false };
@@ -797,7 +797,7 @@ async function nextRound() {
                 const indexInAvailable = availableCards.indexOf(cardId);
                 if (indexInAvailable > -1) {
                     availableCards.splice(indexInAvailable, 1);
-                    console.info(`卡牌庫存: [${cardNameForLog}] (ID: ${cardId}) 已被購買移除。`);
+                    //console.info(`卡牌庫存: [${cardNameForLog}] (ID: ${cardId}) 已被購買移除。`);
                 }
             } else {
                 const failDetail = `購買失敗: ${cardNameForLog} (需 ${actualCost}, 現有 ${playerTimes[p]})`;
@@ -819,7 +819,7 @@ async function nextRound() {
                 if (indexInAvailable > -1) {
                     availableCards.splice(indexInAvailable, 1);
                     const winnerCharName = characterSettings[playerCharacterSelections[biddingResultOutcome.winner]]?.name || '';
-                    console.info(`卡牌庫存: [${cardNameForLog}] (ID: ${cardId}) 已被玩家 [${biddingResultOutcome.winner}] (${winnerCharName}) 競標獲得並移除。`);
+                    console.info(`玩家 [${biddingResultOutcome.winner}] 競標獲得。`);
                 }
             }
             // 抽牌 (如果需要)
@@ -838,7 +838,7 @@ async function nextRound() {
     // 清理本回合市場上未被購買/競標的卡 (這些卡已在本回合出現過，不應再出現)
     const initialMarketCardsThisRound = gameStateBeforeNextRound.marketCards;
     if (initialMarketCardsThisRound && initialMarketCardsThisRound.length > 0) {
-        console.info(`回合清理: 準備清理本回合未售市場卡 [${initialMarketCardsThisRound.map(id => cardData[id]?.name || `ID ${id}`).join(', ')}]`);
+        //console.info(`回合清理: 準備清理本回合未售市場卡 [${initialMarketCardsThisRound.map(id => cardData[id]?.name || `ID ${id}`).join(', ')}]`);
         initialMarketCardsThisRound.forEach(cardIdToRemove => {
             // 檢查這張卡是否還在 availableCards (可能已被購買或競標成功)
             const cardWasSoldOrWon = !availableCards.includes(cardIdToRemove);
@@ -846,7 +846,7 @@ async function nextRound() {
                  const indexInAvailable = availableCards.indexOf(cardIdToRemove); // 再次確認 (理論上它應該還在)
                  if (indexInAvailable > -1) {
                     availableCards.splice(indexInAvailable, 1);
-                    console.info(`市場棄牌: [${cardData[cardIdToRemove]?.name || `ID ${cardIdToRemove}`}] (未售出，從可用牌庫移除)`);
+                    //console.info(`市場棄牌: [${cardData[cardIdToRemove]?.name || `ID ${cardIdToRemove}`}] (未售出，從可用牌庫移除)`);
                  }
             }
         });
@@ -873,7 +873,7 @@ async function nextRound() {
                     detail: detailMsg, timeChange: actualTimeGained,
                     timeAfter: playerTimes[p_id_to_receive_bonus], round: round
                 });
-                 console.info(`回合事件: 玩家 [${p_id_to_receive_bonus}] (${characterSettings[playerCharacterSelections[p_id_to_receive_bonus]].name}) 因此技能獲得 +${actualTimeGained}時`);
+                 //console.info(`回合事件: 玩家 [${p_id_to_receive_bonus}] (${characterSettings[playerCharacterSelections[p_id_to_receive_bonus]].name}) 因此技能獲得 +${actualTimeGained}時`);
             }
         });
     }
@@ -886,7 +886,7 @@ async function nextRound() {
     updateAllTimeBars();
     renderTimeline();
     gameStateBeforeNextRound = null; // 清除上回合保存的狀態
-    console.info(`====== 回合 ${round -1 } 結束，準備進入回合 ${round}。可用卡牌剩餘 ${availableCards.length} 張 ======`);
+    //console.info(`====== 回合 ${round -1 } 結束，準備進入回合 ${round}。可用卡牌剩餘 ${availableCards.length} 張 ======`);
 
     // 檢查遊戲是否結束 (所有卡片用完且市場無法形成)
     const marketAreaContainer = document.getElementById('marketArea'); // 確保 drawMarket 後再檢查
@@ -1096,7 +1096,7 @@ function resolveBidding() {
             if (playersWithSkill4InTie.length === 1) {
                 skill4Winner = playersWithSkill4InTie[0];
                 const skillUserCharName = characterSettings[playerCharacterSelections[skill4Winner]]?.name || '';
-                console.info(`競標事件: 玩家 [${skill4Winner}] (${skillUserCharName}) 因技能 "追逐夢想的人" 優先解決平手。`);
+                console.info(`競標事件: 玩家 [${skill4Winner}] (${skillUserCharName}) 因技能 "追逐夢想的人" 獲勝。`);
             } else if (playersWithSkill4InTie.length > 1) {
                  const skillUsersNames = playersWithSkill4InTie.map(pid => `${pid} (${characterSettings[playerCharacterSelections[pid]]?.name || ''})`).join('、');
                  console.warn(`競標警告: 多名平手玩家 [${skillUsersNames}] 擁有優先技能，技能無法獨佔解決卡片 [${cardNameForLog}] 的平局。將視為一般平手。`);
@@ -1203,7 +1203,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
     let consolationSelectableCards = availableCards.filter(
         cardId => !(gameStateBeforeNextRound.marketCards.includes(cardId)) // 排除本回合市場上出現過的卡
     );
-    console.info(`抽牌階段: 初始可選卡牌 ${consolationSelectableCards.length} 張 (已排除本回合市場卡: [${gameStateBeforeNextRound.marketCards.map(id => cardData[id]?.name || id).join(', ')}])`);
+    //console.info(`抽牌階段: 初始可選卡牌 ${consolationSelectableCards.length} 張 (已排除本回合市場卡: [${gameStateBeforeNextRound.marketCards.map(id => cardData[id]?.name || id).join(', ')}])`);
 
     for (const player of sortedTiedPlayers) {
         const playerCharName = characterSettings[playerCharacterSelections[player]]?.name || '';
@@ -1216,7 +1216,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                 timeChange: 0, timeAfter: playerTimes[player], round: round
             });
         } else {
-            console.info(`抽牌階段: 輪到玩家 [${player}] (${playerCharName}) 選擇卡片 (可選 ${consolationSelectableCards.length} 張: [${consolationSelectableCards.map(id=>cardData[id]?.name || id).join(', ')}])`);
+            //console.info(`抽牌階段: 輪到玩家 [${player}] (${playerCharName}) 選擇卡片 (可選 ${consolationSelectableCards.length} 張: [${consolationSelectableCards.map(id=>cardData[id]?.name || id).join(', ')}])`);
             const chosenCardId = await promptConsolationCardChoice(player, [...consolationSelectableCards]);
 
             if (!chosenCardId) {
@@ -1248,7 +1248,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                      });
                      continue;
                 }
-                console.info(`抽牌階段: 玩家 [${player}] (${playerCharName}) 正在考慮購買卡片 [${chosenCardInfo.name}] (ID: ${chosenCardId})`);
+                //console.info(`抽牌階段: 玩家 [${player}] (${playerCharName}) 正在考慮購買卡片 [${chosenCardInfo.name}] (ID: ${chosenCardId})`);
 
                 const originalPrice = chosenCardInfo.price;
                 const actualCost = getAdjustedCardCost(player, originalPrice, 'consolation_draw');
@@ -1263,7 +1263,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                         type: 'draw_acquire', subtype: 'consolation_purchase', detail: detailMsg,
                         timeChange: -actualCost, timeAfter: playerTimes[player], round: round
                     });
-                    console.info('抽牌階段: 玩家 [${player}] (${playerCharName}) 獲得 [${chosenCardInfo.name}] (原${originalPrice}, 實${actualCost}${skillTextForDisplay}), 剩餘時間 ${playerTimes[player]}');
+                    console.info(`抽牌階段: 玩家 [${player}] (${playerCharName}) 獲得 [${chosenCardInfo.name}] (原${originalPrice}, 實${actualCost}${skillTextForDisplay}), 剩餘時間 ${playerTimes[player]}`);
                 } else {
                     const reason = (wantsToBuy && playerTimes[player] < actualCost) ? '時間不足' : '放棄購買';
                     const detailMsg = `抽牌放棄: ${chosenCardInfo.name} (${reason})`;
@@ -1271,7 +1271,7 @@ async function startConsolationDrawPhase(tiedPlayersList) {
                         type: 'draw_decline', subtype: 'consolation_purchase_decline', detail: detailMsg,
                         timeChange: 0, timeAfter: playerTimes[player], round: round
                     });
-                    console.info(`抽牌階段: 玩家 [${player}] (${playerCharName}) 放棄購買 [${chosenCardInfo.name}] (原因: ${reason})`);
+                    console.info(`抽牌階段: 玩家 [${player}] (${playerCharName}) 放棄購買 [${chosenCardInfo.name}]`);
                 }
             }
         }
@@ -1345,7 +1345,7 @@ async function promptConsolationPurchase(player, cardInfoToPurchase, actualCost)
             const foundCard = cardData[displayCardInfo.id];
             if (foundCard) displayCardInfo = foundCard;
             else { // 極端情況，cardData 中也找不到
-                 console.error('抽牌購買錯誤: 卡片ID [${displayCardInfo.id}] (${displayCardInfo.name}) 在 cardData 中未找到！');
+                 //console.error('抽牌購買錯誤: 卡片ID [${displayCardInfo.id}] (${displayCardInfo.name}) 在 cardData 中未找到！');
                  // 即使如此，也盡量顯示已知資訊
             }
         }
@@ -1452,8 +1452,8 @@ function renderTimeline() {
             const subtype = String(event.subtype).toLowerCase();
 
             if (type === 'rest') symbol = '休';
-            else if (type === 'buy') symbol = '購';
-            else if (type === 'buy_fail') symbol = 'X';
+            else if (type === 'buy') symbol = '購✓';
+            else if (type === 'buy_fail') symbol = '購X';
             else if (type === 'bidding') {
                 if (subtype === 'win' || subtype === 'win_skill') symbol = '標✓';
                 else if (subtype === 'tie_unresolved') symbol = '平';

@@ -82,5 +82,29 @@
             "value": 1,
             "description": "每回合所有玩家都會+1時間"
         }
+    },
+    "11": {
+        "name": "玩家A",
+        "startTime": 4,
+        "skill": {
+            "value": "NONE",
+            "description": "無角色能力"
+        }
+    },
+    "12": {
+        "name": "玩家B",
+        "startTime": 4,
+        "skill": {
+            "value": "NONE",
+            "description": "無角色能力"
+        }
+    },
+    "13": {
+        "name": "玩家C",
+        "startTime": 4,
+        "skill": {
+            "value": "NONE",
+            "description": "無角色能力"
+        }
     }
 }
